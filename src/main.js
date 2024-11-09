@@ -2,7 +2,10 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import PrimeVue from 'primevue/config'
 import Aura from '@primevue/themes/aura'
+
 import Button from 'primevue/button'
+import Drawer from 'primevue/drawer'
+import Menubar from 'primevue/menubar'
 
 import App from './App.vue'
 import router from './router'
@@ -17,7 +20,9 @@ app.use(PrimeVue, {
 
 app.use(createPinia())
 app.use(router)
-app.use(PrimeVue)
+
 app.component('Button', Button)
+app.component('Drawer', Drawer)
+app.component('Menubar', Menubar)
 
 app.mount('#app')
