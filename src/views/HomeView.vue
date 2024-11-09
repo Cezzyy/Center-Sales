@@ -1,3 +1,30 @@
+<script setup>
+import { ref } from 'vue'
+import HomeDashboard from '../components/HomeDashboard.vue'
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+import { library } from '@fortawesome/fontawesome-svg-core'
+import {
+  faChartSimple,
+  faPerson,
+  faSuitcase,
+  faSquarePollHorizontal,
+  faBoxesStacked,
+} from '@fortawesome/free-solid-svg-icons'
+
+library.add(faChartSimple, faPerson, faSuitcase, faSquarePollHorizontal, faBoxesStacked)
+
+const isSidebarOpen = ref(false)
+const currentView = ref('HomeDashboard')
+
+const toggleSidebar = () => {
+  isSidebarOpen.value = !isSidebarOpen.value
+}
+
+const setView = (view) => {
+  currentView.value = view
+}
+</script>
+
 <template>
   <div class="layout">
     <!-- Header -->
@@ -64,45 +91,34 @@
     <aside class="sidebar" :class="{ 'sidebar-open': isSidebarOpen }">
       <nav class="nav-menu">
         <a href="#" class="nav-item">
-          <span class="nav-icon">📊</span>
+          <font-awesome-icon :icon="['fas', 'chart-simple']" class="nav-icon" />
           Dashboard
         </a>
         <a href="#" class="nav-item">
-          <span class="nav-icon">👥</span>
+          <font-awesome-icon :icon="['fas', 'person']" class="nav-icon" />
           Clients
         </a>
         <a href="#" class="nav-item">
-          <span class="nav-icon">💰</span>
+          <font-awesome-icon :icon="['fas', 'suitcase']" class="nav-icon" />
           Sales
         </a>
         <a href="#" class="nav-item">
-          <span class="nav-icon">📈</span>
+          <font-awesome-icon :icon="['fas', 'square-poll-horizontal']" class="nav-icon" />
           Reports
         </a>
         <a href="#" class="nav-item">
-          <span class="nav-icon">📦</span>
+          <font-awesome-icon :icon="['fas', 'boxes-stacked']" class="nav-icon" />
           Products
         </a>
       </nav>
     </aside>
 
     <!-- Main Content -->
-    <main class="main-content" :class="{ 'content-shifted': isSidebarOpen }">
-      <h1>Welcome to Sales & Client Management System</h1>
-      <!-- Add your main content here -->
+    <main class="main-content">
+      <component :is="currentView === 'HomeDashboard' ? HomeDashboard : null" />
     </main>
   </div>
 </template>
-
-<script setup>
-import { ref } from 'vue'
-
-const isSidebarOpen = ref(false)
-
-const toggleSidebar = () => {
-  isSidebarOpen.value = !isSidebarOpen.value
-}
-</script>
 
 <style>
 :root {
@@ -134,7 +150,7 @@ h1 {
   align-items: center;
   justify-content: space-between;
   padding: 0 1.5rem;
-  z-index: 100;
+  z-index: 1000;
 }
 
 .header-icons {
