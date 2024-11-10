@@ -1,21 +1,17 @@
 <template>
   <div class="dashboard-container">
-    <!-- Sales by Region Bar Chart (Left Side, Top) -->
     <div class="chart-container">
       <canvas ref="salesRegionChart"></canvas>
     </div>
 
-    <!-- Client Distribution Bar Chart (Left Side, Bottom) -->
     <div class="chart-container">
       <canvas ref="clientDistributionChart"></canvas>
     </div>
 
-    <!-- Monthly Sales Line Chart (Right Side, Top) -->
     <div class="chart-container">
       <canvas ref="salesChart"></canvas>
     </div>
 
-    <!-- Client Growth Line Chart (Right Side, Bottom) -->
     <div class="chart-container">
       <canvas ref="clientGrowthChart"></canvas>
     </div>
@@ -182,21 +178,19 @@ onMounted(() => {
   height: 400px;
 }
 
-/* For screens smaller than 1024px (e.g., tablets) */
 @media (max-width: 1024px) {
   .dashboard-container {
-    grid-template-columns: 1fr; /* Single column layout */
+    grid-template-columns: 1fr;
     grid-template-rows: auto;
     gap: 20px;
     padding: 20px;
   }
 
   .chart-container {
-    height: 300px; /* Reduce height for smaller screens */
+    height: 300px;
   }
 }
 
-/* For screens smaller than 768px (e.g., mobile devices) */
 @media (max-width: 768px) {
   .dashboard-container {
     padding: 10px;

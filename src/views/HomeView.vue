@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 import HomeDashboard from '../components/HomeDashboard.vue'
+import Clients from '../components/ClientsList.vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { library } from '@fortawesome/fontawesome-svg-core'
 import {
@@ -9,12 +10,20 @@ import {
   faSuitcase,
   faSquarePollHorizontal,
   faBoxesStacked,
+  faSignOutAlt,
 } from '@fortawesome/free-solid-svg-icons'
 
-library.add(faChartSimple, faPerson, faSuitcase, faSquarePollHorizontal, faBoxesStacked)
+library.add(
+  faChartSimple,
+  faPerson,
+  faSuitcase,
+  faSquarePollHorizontal,
+  faBoxesStacked,
+  faSignOutAlt,
+)
 
 const isSidebarOpen = ref(false)
-const currentView = ref('HomeDashboard')
+const currentView = ref('Dashboard')
 
 const toggleSidebar = () => {
   isSidebarOpen.value = !isSidebarOpen.value
@@ -29,21 +38,24 @@ const setView = (view) => {
   <div class="layout">
     <!-- Header -->
     <header class="header">
-      <div class="icon" @click="toggleSidebar">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          class="w-6 h-6"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M4 6h16M4 12h16M4 18h16"
-          />
-        </svg>
+      <div class="header-left">
+        <div class="icon" @click="toggleSidebar">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            class="w-6 h-6"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 6h16M4 12h16M4 18h16"
+            />
+          </svg>
+        </div>
+        <div class="section-title">{{ currentView }}</div>
       </div>
       <div class="header-icons">
         <div class="icon">
@@ -90,32 +102,39 @@ const setView = (view) => {
     <!-- Sidebar -->
     <aside class="sidebar" :class="{ 'sidebar-open': isSidebarOpen }">
       <nav class="nav-menu">
-        <a href="#" class="nav-item">
+        <a href="#" class="nav-item" @click="setView('Dashboard')">
           <font-awesome-icon :icon="['fas', 'chart-simple']" class="nav-icon" />
           Dashboard
         </a>
-        <a href="#" class="nav-item">
+        <a href="#" class="nav-item" @click="setView('Clients')">
           <font-awesome-icon :icon="['fas', 'person']" class="nav-icon" />
           Clients
         </a>
-        <a href="#" class="nav-item">
+        <a href="#" class="nav-item" @click="setView('Sales')">
           <font-awesome-icon :icon="['fas', 'suitcase']" class="nav-icon" />
           Sales
         </a>
-        <a href="#" class="nav-item">
+        <a href="#" class="nav-item" @click="setView('Reports')">
           <font-awesome-icon :icon="['fas', 'square-poll-horizontal']" class="nav-icon" />
           Reports
         </a>
-        <a href="#" class="nav-item">
+        <a href="#" class="nav-item" @click="setView('Products')">
           <font-awesome-icon :icon="['fas', 'boxes-stacked']" class="nav-icon" />
           Products
         </a>
       </nav>
+      <div class="logout-container">
+        <a href="#" class="nav-item logout-button">
+          <font-awesome-icon :icon="['fas', 'sign-out-alt']" class="nav-icon" />
+          Logout
+        </a>
+      </div>
     </aside>
 
     <!-- Main Content -->
     <main class="main-content">
-      <component :is="currentView === 'HomeDashboard' ? HomeDashboard : null" />
+      <component :is="currentView === 'Dashboard' ? HomeDashboard : null" />
+      <component :is="currentView === 'Clients' ? Clients : null" />
     </main>
   </div>
 </template>
@@ -128,6 +147,7 @@ const setView = (view) => {
   --sidebar-width: 250px;
   --header-height: 64px;
 }
+
 h1 {
   color: var(--text-color);
   font-size: 2rem;
@@ -153,6 +173,18 @@ h1 {
   z-index: 1000;
 }
 
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.section-title {
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: var(--text-color);
+}
+
 .header-icons {
   display: flex;
   gap: 1rem;
@@ -176,6 +208,8 @@ h1 {
   box-shadow: 1px 0 3px rgba(0, 0, 0, 0.1);
   transform: translateX(-100%);
   transition: transform 0.3s ease;
+  display: flex;
+  flex-direction: column;
 }
 
 .sidebar-open {
@@ -184,6 +218,7 @@ h1 {
 
 .nav-menu {
   padding: 1rem 0;
+  flex-grow: 1;
 }
 
 .nav-item {
@@ -202,6 +237,19 @@ h1 {
 
 .nav-icon {
   font-size: 1.25rem;
+}
+
+.logout-container {
+  border-top: 1px solid #e2e8f0;
+  padding: 1rem 0;
+}
+
+.logout-button {
+  color: #ef4444;
+}
+
+.logout-button:hover {
+  background-color: #fee2e2;
 }
 
 .main-content {
