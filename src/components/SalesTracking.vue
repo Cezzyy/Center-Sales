@@ -60,9 +60,8 @@
           <h3>Overdue Payments</h3>
           <div v-for="invoice in overdueInvoices" :key="invoice.id" class="alert-item">
             <span class="invoice-id">#{{ invoice.id }}</span>
-            <span class="invoice-amount">${{ invoice.amount }}</span>
-            <span class="days-overdue">{{ invoice.daysOverdue }} days overdue</span>
-            <button @click="sendReminder(invoice.id)" class="btn-reminder">Send Reminder</button>
+            <span class="invoice-amount">₱{{ invoice.amount }}</span>
+            <span class="days-overdue">{{ invoice.daysOverdue }} Days Overdue</span>
           </div>
         </div>
       </div>
@@ -73,7 +72,6 @@
 <script setup>
 import { ref, computed } from 'vue'
 
-// Filter state
 const filters = ref({
   date: '',
   customer: '',
@@ -81,26 +79,16 @@ const filters = ref({
   status: '',
 })
 
-// Mock data - Replace with actual data from your backend
+// Mock data
 const orders = ref([
   { id: 1, customer: 'Neil Vallecer', product: 'Welding Machine', status: 'Pending' },
-  // Add more orders...
 ])
 
-const topProducts = ref([
-  { id: 1, name: 'Welding Mask', quantity: 150, revenue: 15000 },
-  // Add more products...
-])
+const topProducts = ref([{ id: 1, name: 'Welding Mask', quantity: 150, revenue: 15000 }])
 
-const lowProducts = ref([
-  { id: 1, name: 'Electric Rod', quantity: 10, revenue: 1000 },
-  // Add more products...
-])
+const lowProducts = ref([{ id: 1, name: 'Electric Rod', quantity: 10, revenue: 1000 }])
 
-const overdueInvoices = ref([
-  { id: 1, amount: 1500, daysOverdue: 15 },
-  // Add more invoices...
-])
+const overdueInvoices = ref([{ id: 1, amount: 1500, daysOverdue: 15 }])
 
 // Computed properties
 const filteredOrders = computed(() => {
@@ -119,13 +107,7 @@ const filteredOrders = computed(() => {
 
 // Methods
 const generateInvoice = () => {
-  // Implement invoice generation logic
   console.log('Generating invoice...')
-}
-
-const sendReminder = (invoiceId) => {
-  // Implement reminder sending logic
-  console.log('Sending reminder for invoice:', invoiceId)
 }
 </script>
 
