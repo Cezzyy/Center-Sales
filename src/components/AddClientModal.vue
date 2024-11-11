@@ -60,14 +60,12 @@
 <script setup>
 import { ref, reactive, defineProps, defineEmits } from 'vue'
 
-// Destructure `isModalOpen` directly
 const { isModalOpen } = defineProps({
   isModalOpen: Boolean,
 })
 
 const emit = defineEmits(['close'])
 
-// Close modal by emitting the close event
 const closeModal = () => {
   emit('close')
 }
@@ -101,11 +99,9 @@ const handleImageUpload = (event) => {
 
 // Handle form submission and reset the form after submission
 const handleSubmit = () => {
-  // Emit the form data for submission handling
-  console.log('Form submitted:', formData) // Replace with actual submission logic
-  closeModal() // Close the modal after submission
+  console.log('Form submitted:', formData)
+  closeModal()
 
-  // Reset form fields
   Object.keys(formData).forEach((key) => (formData[key] = ''))
   imagePreview.value = null
   if (fileInput.value) fileInput.value.value = ''
