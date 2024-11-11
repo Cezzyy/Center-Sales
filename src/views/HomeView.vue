@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import HomeDashboard from '../components/HomeDashboard.vue'
 import Clients from '../components/ClientsList.vue'
+import Sales from '../components/SalesTracking.vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { library } from '@fortawesome/fontawesome-svg-core'
 import {
@@ -135,6 +136,7 @@ const setView = (view) => {
     <main class="main-content">
       <component :is="currentView === 'Dashboard' ? HomeDashboard : null" />
       <component :is="currentView === 'Clients' ? Clients : null" />
+      <component :is="currentView === 'Sales' ? Sales : null" />
     </main>
   </div>
 </template>

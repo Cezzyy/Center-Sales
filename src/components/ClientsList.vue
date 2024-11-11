@@ -2,11 +2,13 @@
   <div class="clients-section">
     <div class="section-top">
       <h2 class="section-title">Clients List</h2>
-      <button class="add-button">
+      <button class="add-button" @click="openModal">
         <span class="plus-icon">+</span>
         Add Client
       </button>
     </div>
+
+    <AddClientModal :isModalOpen="isModalOpen" @close="closeModal" />
 
     <div class="table-container">
       <table class="clients-table">
@@ -45,6 +47,21 @@
     </div>
   </div>
 </template>
+
+<script setup>
+import { ref } from 'vue'
+import AddClientModal from './AddClientModal.vue'
+
+const isModalOpen = ref(false)
+
+const openModal = () => {
+  isModalOpen.value = true
+}
+
+const closeModal = () => {
+  isModalOpen.value = false
+}
+</script>
 
 <style scoped>
 .clients-section {
@@ -129,13 +146,8 @@
   letter-spacing: 0.05em;
 }
 
-.clients-table tr {
-  transition: all 0.2s ease;
-}
-
 .clients-table tbody tr:hover {
   background-color: rgba(249, 250, 251, 0.8);
-  transform: translateY(-1px);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
 }
 
