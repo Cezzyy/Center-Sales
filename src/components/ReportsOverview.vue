@@ -372,7 +372,7 @@ watch([startDate, endDate, selectedSalesRep, selectedCategory, searchQuery], () 
               @click="handleSort(column)"
             >
               {{ column.charAt(0).toUpperCase() + column.slice(1) }}
-              {{ sortBy === column ? (sortDirection === 'asc' ? '↑' : '↓') : '↕' }}
+              {{ sortBy === column ? (sortDirection === 'asc' ? '↑' : '↓') : '' }}
             </th>
           </tr>
         </thead>
@@ -518,12 +518,7 @@ watch([startDate, endDate, selectedSalesRep, selectedCategory, searchQuery], () 
 }
 
 .export-btn {
-  background-color: #4caf50;
-  color: white;
-}
-
-.print-btn {
-  background-color: #2196f3;
+  background: linear-gradient(135deg, #4f46e5, #4338ca);
   color: white;
 }
 
@@ -588,9 +583,8 @@ watch([startDate, endDate, selectedSalesRep, selectedCategory, searchQuery], () 
 }
 
 .page-btn.active {
-  background-color: #2196f3;
+  background: linear-gradient(135deg, #4f46e5, #4338ca);
   color: white;
-  border-color: #2196f3;
 }
 
 .page-btn:hover:not(.active) {
