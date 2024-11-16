@@ -292,7 +292,7 @@ const prevOverduePage = () => {
 
 
 
-<style>
+<style scoped>
 .sales-tracking {
   padding: 20px;
   max-width: 1200px;
