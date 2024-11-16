@@ -2,6 +2,9 @@
 import { ref, computed } from 'vue'
 import { useStorage } from '@vueuse/core'
 import * as XLSX from 'xlsx'
+import AddProductModal from './AddProductModal.vue'
+
+const showAddProductModal = ref(false)
 
 // Initial sample data
 const initialProducts = [
@@ -125,20 +128,6 @@ const handlePageChange = (page) => {
   }
 }
 
-const addProduct = () => {
-  const newProduct = {
-    id: products.value.length + 1,
-    name: 'New Product',
-    sku: `SKU-${Math.floor(Math.random() * 1000)}`,
-    category: 'Electronics',
-    quantity: 0,
-    price: 0,
-    status: 'Out of Stock',
-  }
-  products.value.push(newProduct)
-  //Initial, this would open a modal or navigate to an edit page
-}
-
 const editProduct = (product) => {
   // Initial, this would open a modal or navigate to an edit page
   console.log('Editing product:', product)
@@ -212,9 +201,13 @@ const exportToExcel = () => {
 
     <!-- Actions Section -->
     <section class="actions-section">
-      <button @click="addProduct" class="action-button add-button">Add Product</button>
+      <button @click="showAddProductModal = true" class="action-button add-button">
+        Add Product
+      </button>
       <button @click="exportToExcel" class="action-button export-button">Export to Excel</button>
     </section>
+
+    <AddProductModal v-model="showAddProductModal" @submit="handleAddProduct" />
 
     <!-- Products Table -->
     <section class="table-section">
