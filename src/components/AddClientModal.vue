@@ -1,80 +1,121 @@
 <template>
-  <div>
-    <!-- Modal Overlay -->
-    <div v-if="isModalOpen" class="modal-overlay">
-      <div class="modal-content">
-        <button @click="closeModal" class="close-btn">&times;</button>
+  <div class="modal-overlay" v-if="isModalOpen" @click.self="closeModal">
+    <div class="modal-content">
+      <h2>Add New Client</h2>
 
-        <h2>Add New Client</h2>
-
-        <form @submit.prevent="handleSubmit" class="client-form">
-          <!-- Profile Picture Section -->
-          <div class="profile-picture-section">
-            <label>Profile Picture</label>
-            <div class="profile-upload">
-              <input type="file" @change="handleImageUpload" accept="image/*" ref="fileInput" />
-              <div v-if="imagePreview" class="image-preview">
-                <img :src="imagePreview" alt="Profile Preview" />
-              </div>
-            </div>
+      <form @submit.prevent="handleSubmit" class="edit-form">
+        <!-- Profile Picture Section -->
+        <div class="profile-picture-section">
+          <div class="preview-container">
+            <img
+              :src="previewImage || '/default-avatar.png'"
+              alt="Profile Preview"
+              class="profile-preview"
+            />
           </div>
-
-          <!-- Client Information Fields -->
-          <div class="form-group">
-            <label>First Name</label>
-            <input type="text" v-model="formData.firstName" required />
+          <div class="upload-button">
+            <label for="profile-upload" class="custom-file-upload">
+              Upload Picture
+            </label>
+            <input
+              type="file"
+              id="profile-upload"
+              accept="image/*"
+              @change="handleImageUpload"
+            />
           </div>
+        </div>
 
-          <div class="form-group">
-            <label>Last Name</label>
-            <input type="text" v-model="formData.lastName" required />
-          </div>
+        <!-- Form Fields -->
+        <div class="form-group">
+          <label for="firstName">First Name</label>
+          <input
+            type="text"
+            id="firstName"
+            v-model="formData.firstName"
+            required
+          />
+        </div>
 
-          <div class="form-group">
-            <label>Address</label>
-            <textarea v-model="formData.address" required></textarea>
-          </div>
+        <div class="form-group">
+          <label for="lastName">Last Name</label>
+          <input
+            type="text"
+            id="lastName"
+            v-model="formData.lastName"
+            required
+          />
+        </div>
 
-          <div class="form-group">
-            <label>Company</label>
-            <input type="text" v-model="formData.company" required />
-          </div>
+        <div class="form-group">
+          <label for="address">Address</label>
+          <input
+            type="text"
+            id="address"
+            v-model="formData.address"
+            required
+          />
+        </div>
 
-          <div class="form-group">
-            <label>Email Address</label>
-            <input type="email" v-model="formData.email" required />
-          </div>
+        <div class="form-group">
+          <label for="company">Company</label>
+          <input
+            type="text"
+            id="company"
+            v-model="formData.company"
+            required
+          />
+        </div>
 
-          <div class="form-group">
-            <label>Phone Number</label>
-            <input type="tel" v-model="formData.phone" required />
-          </div>
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input
+            type="email"
+            id="email"
+            v-model="formData.email"
+            required
+          />
+        </div>
 
-          <button type="submit" class="add-btn">Add Client</button>
-        </form>
-      </div>
+        <div class="form-group">
+          <label for="phone">Phone Number</label>
+          <input
+            type="tel"
+            id="phone"
+            v-model="formData.phone"
+            required
+          />
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="button-group">
+          <button type="button" class="cancel-btn" @click="closeModal">
+            Cancel
+          </button>
+          <button type="submit" class="done-btn">
+            Add Client
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, defineProps, defineEmits } from 'vue'
+import { ref } from 'vue'
 
-const { isModalOpen } = defineProps({
-  isModalOpen: Boolean,
+// Props and Emits
+const props = defineProps({
+  isModalOpen: {
+    type: Boolean,
+    required: true,
+  },
 })
-
 const emit = defineEmits(['close'])
 
-const closeModal = () => {
-  emit('close')
-}
-
-const imagePreview = ref(null)
-const fileInput = ref(null)
-
-// Form data with initial empty values
-const formData = reactive({
+// State
+const previewImage = ref(null)
+const formData = ref({
   firstName: '',
   lastName: '',
   address: '',
@@ -84,27 +125,40 @@ const formData = reactive({
   profilePicture: null,
 })
 
-// Function to handle image upload and preview
+// Methods
 const handleImageUpload = (event) => {
   const file = event.target.files[0]
   if (file) {
-    formData.profilePicture = file
     const reader = new FileReader()
     reader.onload = (e) => {
-      imagePreview.value = e.target.result
+      previewImage.value = e.target.result
+      formData.value.profilePicture = e.target.result
     }
     reader.readAsDataURL(file)
   }
 }
 
-// Handle form submission and reset the form after submission
 const handleSubmit = () => {
-  console.log('Form submitted:', formData)
-  closeModal()
+  console.log('Form submitted:', formData.value)
+  resetForm()
+  emit('close')
+}
 
-  Object.keys(formData).forEach((key) => (formData[key] = ''))
-  imagePreview.value = null
-  if (fileInput.value) fileInput.value.value = ''
+const resetForm = () => {
+  formData.value = {
+    firstName: '',
+    lastName: '',
+    address: '',
+    company: '',
+    email: '',
+    phone: '',
+    profilePicture: null,
+  }
+  previewImage.value = null
+}
+
+const closeModal = () => {
+  emit('close')
 }
 </script>
 
@@ -113,8 +167,8 @@ const handleSubmit = () => {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
+  right: 0;
+  bottom: 0;
   background-color: rgba(0, 0, 0, 0.5);
   display: flex;
   justify-content: center;
@@ -127,37 +181,60 @@ const handleSubmit = () => {
   padding: 2rem;
   border-radius: 8px;
   width: 90%;
-  max-width: 600px;
+  max-width: 500px;
   max-height: 90vh;
   overflow-y: auto;
-  position: relative;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
-.close-btn {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  padding: 0.5rem;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+h2 {
+  margin: 0 0 1.5rem 0;
+  color: #333;
+  text-align: center;
 }
 
-.close-btn:hover {
-  background-color: #f0f0f0;
-}
-
-.client-form {
+.edit-form {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.profile-picture-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.preview-container {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid #e0e0e0;
+}
+
+.profile-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.upload-button input[type="file"] {
+  display: none;
+}
+
+.custom-file-upload {
+  padding: 8px 16px;
+  background-color: #f0f0f0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.custom-file-upload:hover {
+  background-color: #e0e0e0;
 }
 
 .form-group {
@@ -166,81 +243,66 @@ const handleSubmit = () => {
   gap: 0.5rem;
 }
 
-.form-group label {
-  font-weight: bold;
-  color: #333;
+label {
+  font-weight: 600;
+  color: #555;
 }
 
-.form-group input,
-.form-group textarea {
+input {
   padding: 0.75rem;
   border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 1rem;
+  transition: border-color 0.3s;
 }
 
-.form-group textarea {
-  min-height: 100px;
-  resize: vertical;
+input:focus {
+  outline: none;
+  border-color: #4a90e2;
 }
 
-.profile-picture-section {
+.button-group {
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.profile-upload {
-  display: flex;
-  flex-direction: column;
   gap: 1rem;
+  margin-top: 1.5rem;
+  justify-content: flex-end;
 }
 
-.image-preview {
-  width: 150px;
-  height: 150px;
-  border: 2px dashed #ddd;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.image-preview img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.open-modal-btn,
-.add-btn {
+button {
   padding: 0.75rem 1.5rem;
-  background-color: #4caf50;
-  color: white;
   border: none;
   border-radius: 4px;
+  font-weight: 600;
   cursor: pointer;
-  font-size: 1rem;
-  transition: background-color 0.3s;
+  transition: opacity 0.3s;
 }
 
-.open-modal-btn:hover,
-.add-btn:hover {
-  background-color: #45a049;
+button:hover {
+  opacity: 0.9;
 }
 
-.add-btn {
-  margin-top: 1rem;
+.cancel-btn {
+  background-color: #f0f0f0;
+  color: #333;
 }
 
-/* Form validation styles */
-input:invalid,
-textarea:invalid {
-  border-color: #ff4444;
+.done-btn {
+  background-color: #4a90e2;
+  color: white;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 480px) {
   .modal-content {
-    width: 95%;
     padding: 1rem;
   }
+
+  .button-group {
+    flex-direction: column;
+  }
+
+  button {
+    width: 100%;
+  }
 }
+
 </style>
