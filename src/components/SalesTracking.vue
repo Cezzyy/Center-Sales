@@ -1,463 +1,672 @@
+<script setup>
+import { ref, computed } from 'vue';
+import AddSalesModal from './AddSalesModal.vue'
+import AddInvoiceModal from './AddInvoiceModal.vue';
+import ViewOrderModal from './ViewOrderModal.vue';
+
+// State for modal visibility
+const isAddSalesModalOpen = ref(false);
+const isAddInvoiceModalOpen = ref(false);
+const isViewOrderModalOpen = ref(false);
+
+const viewOrder = ref({
+  orderId: '',
+  customerName: '',
+  productName: '',
+  quantity: 0,
+  salesRepresentative: '',
+  amount: 0,
+  status: '',
+});
+
+// Open and close modal functions
+const openAddSalesModal = () => {
+  isAddSalesModalOpen.value = true;
+};
+
+const closeAddSalesModal = () => {
+  isAddSalesModalOpen.value = false;
+};
+
+const openAddInvoiceModal = () => {
+  isAddInvoiceModalOpen.value = true;
+};
+
+const closeAddInvoiceModal = () => {
+  isAddInvoiceModalOpen.value = false;
+};
+
+const openViewOrderModal = (order) => {
+  isViewOrderModalOpen.value = true;
+  viewOrder.value = order;
+};
+
+const closeViewOrderModal = () => {
+  isViewOrderModalOpen.value = false;
+};
+
+// Handle form submission from modal
+const handleAddSalesSubmit = (salesData) => {
+  console.log('Sales Data Submitted:', salesData);
+  // Add logic to handle the submitted sales data
+  closeAddSalesModal();
+};
+
+const handleAddInvoiceSubmit = (invoiceData) => {
+  console.log('Invoice Data Submitted:', invoiceData);
+  closeAddInvoiceModal();
+};
+
+// Sample data for Orders
+const orders = ref([
+  { orderId: "ORD-001", customerName: "John Doe", productName: "Product A", amount: 1500, status: "pending", quantity: 10, salesRepresentative: "Neil Vallecer", date: "2024-01-01" },
+  { orderId: "ORD-002", customerName: "Jane Smith", productName: "Product B", amount: 1200, status: "completed", quantity: 5, salesRepresentative: "Neil Vallecer", date: "2024-01-02" },
+  // Add more orders...
+]);
+
+// Sample data for Invoices
+const invoices = ref([
+  { invoiceId: "INV-001", customer: "John Doe", amount: 1500, dueDate: "2024-02-01", daysOverdue: 15 },
+  { invoiceId: "INV-002", customer: "Jane Smith", amount: 1200, dueDate: "2024-02-10", daysOverdue: 0 },
+  // Add more sample invoices...
+]);
+
+// Pagination state
+const currentPageOrders = ref(1);
+const currentPageInvoices = ref(1);
+const itemsPerPage = 10;
+
+// Filter state for Orders
+const orderFilters = ref({
+  dateFrom: "",
+  dateTo: "",
+  orderId: "",
+  customerName: "",
+  productName: "",
+  status: "",
+});
+
+// Computed: Filtered Orders
+const filteredOrders = computed(() => {
+  return orders.value.filter((order) => {
+    const matchesOrderId =
+      !orderFilters.value.orderId || order.orderId.toLowerCase().includes(orderFilters.value.orderId.toLowerCase());
+
+    const matchesCustomer =
+      !orderFilters.value.customerName || order.customerName.toLowerCase().includes(orderFilters.value.customerName.toLowerCase());
+
+    const matchesProduct =
+      !orderFilters.value.productName || order.productName.toLowerCase().includes(orderFilters.value.productName.toLowerCase());
+
+    const matchesStatus = !orderFilters.value.status || order.status === orderFilters.value.status;
+
+    const matchesDateRange =
+      (!orderFilters.value.dateFrom || !orderFilters.value.dateTo) ||
+      (order.date >= orderFilters.value.dateFrom && order.date <= orderFilters.value.dateTo);
+
+    return matchesOrderId && matchesCustomer && matchesProduct && matchesStatus && matchesDateRange;
+  });
+});
+
+// Computed: Paginated Orders
+const paginatedOrders = computed(() => {
+  const startIndex = (currentPageOrders.value - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  return filteredOrders.value.slice(startIndex, endIndex);
+});
+
+// Computed: Total pages for Orders
+const totalOrderPages = computed(() => Math.ceil(filteredOrders.value.length / itemsPerPage));
+
+// Filter state for Invoices
+const invoiceFilters = ref({
+  invoiceId: "",
+  customer: "",
+});
+
+// Computed: Filtered Invoices
+const filteredInvoices = computed(() => {
+  return invoices.value.filter((invoice) => {
+    const matchesInvoiceId =
+      !invoiceFilters.value.invoiceId || invoice.invoiceId.toLowerCase().includes(invoiceFilters.value.invoiceId.toLowerCase());
+
+    const matchesCustomer =
+      !invoiceFilters.value.customer || invoice.customer.toLowerCase().includes(invoiceFilters.value.customer.toLowerCase());
+
+    return matchesInvoiceId && matchesCustomer;
+  });
+});
+
+// Computed: Paginated Invoices
+const paginatedInvoices = computed(() => {
+  const startIndex = (currentPageInvoices.value - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  return filteredInvoices.value.slice(startIndex, endIndex);
+});
+
+// Computed: Total pages for Invoices
+const totalInvoicePages = computed(() => Math.ceil(filteredInvoices.value.length / itemsPerPage));
+
+// Pagination methods for Orders
+const goToPageOrders = (page) => {
+  if (page >= 1 && page <= totalOrderPages.value) {
+    currentPageOrders.value = page;
+  }
+};
+
+const goToPreviousPageOrders = () => {
+  if (currentPageOrders.value > 1) {
+    currentPageOrders.value--;
+  }
+};
+
+const goToNextPageOrders = () => {
+  if (currentPageOrders.value < totalOrderPages.value) {
+    currentPageOrders.value++;
+  }
+};
+
+// Pagination methods for Invoices
+const goToPageInvoices = (page) => {
+  if (page >= 1 && page <= totalInvoicePages.value) {
+    currentPageInvoices.value = page;
+  }
+};
+
+const goToPreviousPageInvoices = () => {
+  if (currentPageInvoices.value > 1) {
+    currentPageInvoices.value--;
+  }
+};
+
+const goToNextPageInvoices = () => {
+  if (currentPageInvoices.value < totalInvoicePages.value) {
+    currentPageInvoices.value++;
+  }
+};
+
+// Reset Filters for Orders
+const resetOrderFilters = () => {
+  orderFilters.value = {
+    dateFrom: "",
+    dateTo: "",
+    orderId: "",
+    customerName: "",
+    productName: "",
+    status: "",
+  };
+};
+
+// Reset Filters for Invoices
+const resetInvoiceFilters = () => {
+  invoiceFilters.value = {
+    invoiceId: "",
+    customer: "",
+  };
+};
+</script>
+
 <template>
   <div class="sales-tracking">
     <!-- Order Tracking Section -->
-    <section class="order-tracking">
-      <h2>Order Tracking</h2>
+    <section class="section order-tracking">
+      <div class="section-header">
+        <h2>Order Tracking</h2>
+        <button class="btn-add" @click="openAddSalesModal">+ Add Sales Order</button>
+        <AddSalesModal
+      v-model="isAddSalesModalOpen"
+      :productPrice="50"
+      @submit="handleAddSalesSubmit"
+      />
+      </div>
 
-      <!-- Filters -->
-      <div class="filters">
-        <div class="filter-item">
-          <label for="date">Date:</label>
-          <input type="date" id="date" v-model="filters.date">
+
+      <!-- Filter Section for Orders -->
+      <div class="filter-section">
+        <div class="filter-group">
+          <label>Date Range</label>
+          <input type="date" class="filter-input" v-model="orderFilters.dateFrom" placeholder="From" />
+          <input type="date" class="filter-input" v-model="orderFilters.dateTo" placeholder="To" />
         </div>
-        <div class="filter-item">
-          <label for="customer">Customer:</label>
-          <input type="text" id="customer" v-model="filters.customer">
+        <div class="filter-group">
+          <label>Order ID</label>
+          <input type="text" class="filter-input" v-model="orderFilters.orderId" placeholder="Search Order ID..." />
         </div>
-        <div class="filter-item">
-          <label for="product">Product:</label>
-          <input type="text" id="product" v-model="filters.product">
+        <div class="filter-group">
+          <label>Customer Name</label>
+          <input type="text" class="filter-input" v-model="orderFilters.customerName" placeholder="Search Customer..." />
         </div>
-        <div class="filter-item">
-          <label for="status">Status:</label>
-          <select id="status" v-model="filters.status">
-            <option value="">All</option>
+        <div class="filter-group">
+          <label>Product Name</label>
+          <input type="text" class="filter-input" v-model="orderFilters.productName" placeholder="Search Product..." />
+        </div>
+        <div class="filter-group">
+          <label>Status</label>
+          <select class="filter-input" v-model="orderFilters.status">
+            <option value="">All Status</option>
             <option value="pending">Pending</option>
+            <option value="processing">Processing</option>
             <option value="completed">Completed</option>
             <option value="cancelled">Cancelled</option>
           </select>
         </div>
+        <button class="btn-reset" @click="resetOrderFilters">Reset Filters</button>
       </div>
 
       <!-- Orders Table -->
       <div class="table-container">
-        <table class="orders-table">
+        <table class="data-table">
           <thead>
             <tr>
               <th>Order ID</th>
               <th>Customer Name</th>
               <th>Product Name</th>
+              <th>Amount</th>
               <th>Status</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="order in paginatedOrders" :key="order.id">
-              <td>{{ order.id }}</td>
+            <tr v-for="order in paginatedOrders" :key="order.orderId">
+              <td>{{ order.orderId }}</td>
               <td>{{ order.customerName }}</td>
               <td>{{ order.productName }}</td>
-              <td>
-                <span :class="[ 'status', order.status ]">{{ order.status }}</span>
+              <td>${{ order.amount.toFixed(2) }}</td>
+              <td><span :class="'status-badge ' + order.status">{{ order.status }}</span></td>
+              <td class="action-buttons">
+                <button class="btn-action btn-edit">✎ Edit</button>
+                <button class="btn-action btn-view" @click="openViewOrderModal(order)">👁 View</button>
               </td>
+            </tr>
+            <tr v-if="paginatedOrders.length === 0">
+              <td colspan="6">No orders found.</td>
             </tr>
           </tbody>
         </table>
+        <ViewOrderModal
+      v-model="isViewOrderModalOpen"
+      :order="viewOrder"
+      @update:modelValue="closeViewOrderModal"
+      />
 
-        <!-- Pagination -->
+        <!-- Pagination for Orders -->
         <div class="pagination">
-          <button class="page-btn" @click="changePage(currentPage - 1)" :disabled="currentPage === 1">
-            Previous
-          </button>
+          <button class="btn-page" @click="goToPreviousPageOrders" :disabled="currentPageOrders === 1">Previous</button>
           <button
-            v-for="page in pageNumbers"
+            class="btn-page"
+            v-for="page in totalOrderPages"
             :key="page"
-            class="page-btn"
-            :class="{ active: page === currentPage }"
-            @click="typeof page === 'number' && changePage(page)"
-            :disabled="typeof page !== 'number'"
+            :class="{ active: currentPageOrders === page }"
+            @click="goToPageOrders(page)"
           >
             {{ page }}
           </button>
-          <button class="page-btn" @click="changePage(currentPage + 1)" :disabled="currentPage === totalPages">
-            Next
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Product Sales Data Section -->
-    <section class="product-sales">
-      <h2>Product Sales Data</h2>
-
-      <div class="sales-tables">
-        <!-- Top Selling Products -->
-        <div class="sales-table">
-          <h3>Top 5 Selling Products</h3>
-          <table>
-            <thead>
-              <tr>
-                <th>Product Name</th>
-                <th>Quantity</th>
-                <th>Revenue</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="product in topSellingProducts" :key="product.id">
-                <td>{{ product.name }}</td>
-                <td>{{ product.quantity }}</td>
-                <td>${{ product.revenue.toFixed(2) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <!-- Low Performing Products -->
-        <div class="sales-table">
-          <h3>Top 5 Low-Performing Products</h3>
-          <table>
-            <thead>
-              <tr>
-                <th>Product Name</th>
-                <th>Quantity</th>
-                <th>Revenue</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="product in lowPerformingProducts" :key="product.id">
-                <td>{{ product.name }}</td>
-                <td>{{ product.quantity }}</td>
-                <td>${{ product.revenue.toFixed(2) }}</td>
-              </tr>
-            </tbody>
-          </table>
+          <button class="btn-page" @click="goToNextPageOrders" :disabled="currentPageOrders === totalOrderPages">Next</button>
         </div>
       </div>
     </section>
 
     <!-- Invoicing Section -->
-    <section class="invoicing">
-      <h2>Invoicing</h2>
+    <section class="section invoicing">
+      <div class="section-header">
+        <h2>Invoicing</h2>
+        <button class="btn-add" @click="openAddInvoiceModal">+ Add Invoice</button>
+        <AddInvoiceModal
+      v-model="isAddInvoiceModalOpen"
+      :orders="orders"
+      @submit="handleAddInvoiceSubmit"
+      />
+      </div>
 
-      <button class="generate-invoice">Generate Invoice</button>
+      <!-- Filter Section for Invoices -->
+      <div class="filter-section">
+        <div class="filter-group">
+          <label>Invoice ID</label>
+          <input
+            type="text"
+            class="filter-input"
+            v-model="invoiceFilters.invoiceId"
+            placeholder="Search Invoice ID..."
+          />
+        </div>
+        <div class="filter-group">
+          <label>Customer Name</label>
+          <input
+            type="text"
+            class="filter-input"
+            v-model="invoiceFilters.customer"
+            placeholder="Search Customer..."
+          />
+        </div>
+        <button class="btn-reset" @click="resetInvoiceFilters">Reset Filters</button>
+      </div>
 
+      <!-- Overdue Payments Table -->
       <div class="table-container">
-        <h3>Overdue Payments</h3>
-        <table class="overdue-table">
+        <table class="data-table">
           <thead>
             <tr>
-              <th>Order ID</th>
+              <th>Invoice ID</th>
+              <th>Customer</th>
               <th>Amount</th>
-              <th>Overdue Days</th>
+              <th>Due Date</th>
+              <th>Days Overdue</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="payment in paginatedOverduePayments" :key="payment.id">
-              <td>{{ payment.orderId }}</td>
-              <td>${{ payment.amount.toFixed(2) }}</td>
-              <td>{{ payment.overdueDays }}</td>
+            <tr v-for="invoice in paginatedInvoices" :key="invoice.invoiceId">
+              <td>{{ invoice.invoiceId }}</td>
+              <td>{{ invoice.customer }}</td>
+              <td>${{ invoice.amount.toFixed(2) }}</td>
+              <td>{{ invoice.dueDate }}</td>
+              <td :class="{ overdue: invoice.daysOverdue > 0 }">
+                {{ invoice.daysOverdue > 0 ? invoice.daysOverdue + ' days' : 'On Time' }}
+              </td>
+              <td class="action-buttons">
+                <button class="btn-action btn-edit">✎ Edit</button>
+                <button class="btn-action btn-paid">✓ Paid</button>
+              </td>
+            </tr>
+            <tr v-if="paginatedInvoices.length === 0">
+              <td colspan="6">No invoices found.</td>
             </tr>
           </tbody>
         </table>
 
-        <!-- Pagination for Overdue Payments -->
+        <!-- Pagination for Invoices -->
         <div class="pagination">
-          <button @click="prevOverduePage" :disabled="currentOverduePage === 1">&lt; Previous</button>
-          <span>Page {{ currentOverduePage }} of {{ totalOverduePages }}</span>
-          <button @click="nextOverduePage" :disabled="currentOverduePage === totalOverduePages">Next &gt;</button>
+          <button
+            class="btn-page"
+            @click="goToPreviousPageInvoices"
+            :disabled="currentPageInvoices === 1"
+          >
+            Previous
+          </button>
+          <button
+            class="btn-page"
+            v-for="page in totalInvoicePages"
+            :key="page"
+            :class="{ active: currentPageInvoices === page }"
+            @click="goToPageInvoices(page)"
+          >
+            {{ page }}
+          </button>
+          <button
+            class="btn-page"
+            @click="goToNextPageInvoices"
+            :disabled="currentPageInvoices === totalInvoicePages"
+          >
+            Next
+          </button>
         </div>
       </div>
     </section>
   </div>
 </template>
 
-<script setup>
-// Imported pagination logic and additional methods from ReportsOverview.vue
-import { ref, computed } from 'vue'
-
-// Filters state
-const filters = ref({
-  date: '',
-  customer: '',
-  product: '',
-  status: ''
-})
-
-// Mock data for orders (added more for pagination testing)
-const orders = ref([
-  { id: 1, customerName: 'John Doe', productName: 'Laptop', status: 'pending' },
-  { id: 2, customerName: 'Jane Smith', productName: 'Mouse', status: 'completed' },
-  { id: 3, customerName: 'Alice Johnson', productName: 'Keyboard', status: 'cancelled' },
-  { id: 4, customerName: 'Bob Brown', productName: 'Monitor', status: 'completed' },
-  { id: 5, customerName: 'Tom White', productName: 'Desk', status: 'pending' },
-  { id: 6, customerName: 'Emily Davis', productName: 'Chair', status: 'completed' },
-  { id: 7, customerName: 'George Clark', productName: 'Table', status: 'cancelled' },
-  { id: 8, customerName: 'Hannah Lee', productName: 'Mousepad', status: 'pending' },
-  { id: 9, customerName: 'Jack Wilson', productName: 'Monitor Stand', status: 'completed' },
-  { id: 10, customerName: 'Sarah Brown', productName: 'Headphones', status: 'completed' },
-  { id: 11, customerName: 'Michael Green', productName: 'Webcam', status: 'pending' },
-  { id: 12, customerName: 'Chloe Adams', productName: 'Keyboard', status: 'completed' },
-  { id: 13, customerName: 'Matthew White', productName: 'Microphone', status: 'pending' },
-  { id: 14, customerName: 'Sophia King', productName: 'Laptop', status: 'cancelled' },
-  { id: 15, customerName: 'Oliver Scott', productName: 'Desk', status: 'completed' }
-  // Add more data as needed
-])
-
-// Mock data for top-selling products
-const topSellingProducts = ref([
-  { id: 1, name: 'Laptop', quantity: 50, revenue: 50000 },
-  { id: 2, name: 'Mouse', quantity: 100, revenue: 5000 },
-  { id: 3, name: 'Keyboard', quantity: 80, revenue: 8000 },
-  { id: 4, name: 'Monitor', quantity: 40, revenue: 20000 },
-  { id: 5, name: 'Desk', quantity: 20, revenue: 10000 }
-])
-
-// Mock data for low-performing products
-const lowPerformingProducts = ref([
-  { id: 1, name: 'Chairs', quantity: 5, revenue: 500 },
-  { id: 2, name: 'Cable', quantity: 10, revenue: 200 },
-  { id: 3, name: 'Notebook', quantity: 15, revenue: 300 },
-  { id: 4, name: 'Stapler', quantity: 8, revenue: 160 },
-  { id: 5, name: 'Pen', quantity: 12, revenue: 120 }
-])
-
-// Mock data for overdue payments (added more for pagination testing)
-const overduePayments = ref([
-  { id: 1, orderId: 101, amount: 150.5, overdueDays: 5 },
-  { id: 2, orderId: 102, amount: 300.0, overdueDays: 10 },
-  { id: 3, orderId: 103, amount: 75.25, overdueDays: 3 },
-  { id: 4, orderId: 104, amount: 450.75, overdueDays: 7 },
-  { id: 5, orderId: 105, amount: 125.0, overdueDays: 2 },
-  { id: 6, orderId: 106, amount: 215.5, overdueDays: 8 },
-  { id: 7, orderId: 107, amount: 325.75, overdueDays: 6 },
-  { id: 8, orderId: 108, amount: 400.0, overdueDays: 12 },
-  { id: 9, orderId: 109, amount: 95.5, overdueDays: 4 },
-  { id: 10, orderId: 110, amount: 180.0, overdueDays: 9 },
-  { id: 11, orderId: 111, amount: 290.25, overdueDays: 11 },
-  { id: 12, orderId: 112, amount: 75.0, overdueDays: 3 },
-  { id: 13, orderId: 113, amount: 130.5, overdueDays: 2 },
-  { id: 14, orderId: 114, amount: 210.0, overdueDays: 7 },
-  { id: 15, orderId: 115, amount: 325.0, overdueDays: 10 }
-])
-
-// Pagination logic
-const currentPage = ref(1);
-const itemsPerPage = 5;
-const totalPages = computed(() => Math.ceil(orders.value.length / itemsPerPage));
-
-const pageNumbers = computed(() => {
-  const pages = [];
-  if (totalPages.value <= 5) {
-    for (let i = 1; i <= totalPages.value; i++) {
-      pages.push(i);
-    }
-  } else {
-    pages.push(1);
-
-    let start = Math.max(2, currentPage.value - 1);
-    let end = Math.min(totalPages.value - 1, currentPage.value + 1);
-
-    if (currentPage.value === totalPages.value - 1) {
-      start = totalPages.value - 3;
-    } else if (currentPage.value === 2) {
-      end = 4;
-    }
-
-    for (let i = start; i <= end; i++) {
-      pages.push(i);
-    }
-
-    pages.push(totalPages.value);
-  }
-
-  return pages;
-});
-
-const paginatedOrders = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage;
-  const end = start + itemsPerPage;
-  return orders.value.slice(start, end);
-});
-
-const changePage = (page) => {
-  if (page >= 1 && page <= totalPages.value) {
-    currentPage.value = page;
-  }
-};
-
-// Overdue payments pagination
-const currentOverduePage = ref(1)
-const totalOverduePages = computed(() => Math.ceil(overduePayments.value.length / itemsPerPage))
-const paginatedOverduePayments = computed(() => {
-  const start = (currentOverduePage.value - 1) * itemsPerPage
-  const end = start + itemsPerPage
-  return overduePayments.value.slice(start, end)
-})
-
-const nextOverduePage = () => {
-  if (currentOverduePage.value < totalOverduePages.value) currentOverduePage.value++
-}
-const prevOverduePage = () => {
-  if (currentOverduePage.value > 1) currentOverduePage.value--
-}
-</script>
-
-
-
 <style scoped>
+/* Base Styles */
 .sales-tracking {
-  padding: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
+  padding: 2rem;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  color: #333;
 }
 
-section {
-  margin-bottom: 40px;
+/* Section Styles */
+.section {
   background: #fff;
-  padding: 20px;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
+  margin-bottom: 2rem;
 }
 
-h2 {
-  color: #333;
-  margin-bottom: 20px;
-  font-size: 24px;
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
 }
 
-h3 {
-  color: #555;
-  margin-bottom: 15px;
-  font-size: 18px;
+.section-header h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #2c3e50;
+  margin: 0;
 }
 
-/* Filters */
-.filters {
+/* Button Styles */
+.btn-add {
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.btn-add:hover {
+  background: #2980b9;
+}
+
+/* Action Buttons */
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.35rem 0.75rem;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-action .btn-icon {
+  font-size: 1rem;
+}
+
+.btn-action .btn-text {
+  display: inline-block;
+}
+
+/* Edit Button */
+.btn-edit {
+  background-color: #f8f9fa;
+  color: #2c3e50;
+  border: 1px solid #dee2e6;
+}
+
+.btn-edit:hover {
+  background-color: #e9ecef;
+  border-color: #ced4da;
+}
+
+/* View Button */
+.btn-view {
+  background-color: #e3f2fd;
+  color: #0d47a1;
+  border: 1px solid #bbdefb;
+}
+
+.btn-view:hover {
+  background-color: #bbdefb;
+  border-color: #90caf9;
+}
+
+/* Paid Button */
+.btn-paid {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+  border: 1px solid #c8e6c9;
+}
+
+.btn-paid:hover {
+  background-color: #c8e6c9;
+  border-color: #a5d6a7;
+}
+
+/* Filter Section */
+.filter-section {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 15px;
-  margin-bottom: 20px;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 6px;
 }
 
-.filter-item {
+.filter-group {
   display: flex;
   flex-direction: column;
 }
 
-.filter-item label {
-  margin-bottom: 5px;
+.filter-group label {
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
   color: #666;
 }
 
-.filter-item input,
-.filter-item select {
-  padding: 8px;
+.filter-input {
+  padding: 0.5rem;
   border: 1px solid #ddd;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
-/* Tables */
+.filter-input:focus {
+  outline: none;
+  border-color: #3498db;
+}
+
+/* Reset Button */
+.btn-reset {
+  background-color: #f5f5f5;
+  border: 1px solid #ddd;
+  color: #555;
+  padding: 8px 16px;
+  font-size: 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.btn-reset:hover {
+  background-color: #e0e0e0;
+  color: #333;
+}
+
+/* Table Styles */
 .table-container {
   overflow-x: auto;
 }
 
-table {
+.data-table {
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 20px;
+  margin-bottom: 1rem;
 }
 
-th, td {
-  padding: 12px;
+.data-table th,
+.data-table td {
+  padding: 0.75rem;
   text-align: left;
-  border-bottom: 1px solid #ddd;
+  border-bottom: 1px solid #eee;
 }
 
-th {
-  background-color: #f5f5f5;
+.data-table th {
+  background: #f8f9fa;
   font-weight: 600;
+  color: #2c3e50;
 }
 
-/* Status styles */
-.status {
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  text-transform: capitalize;
+.data-table tr:hover {
+  background: #f8f9fa;
 }
 
-.status.pending {
-  background-color: #fff3cd;
+/* Status Badge */
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.status-badge.pending {
+  background: #fff3cd;
   color: #856404;
 }
 
-.status.completed {
-  background-color: #d4edda;
-  color: #155724;
-}
-
-.status.cancelled {
-  background-color: #f8d7da;
-  color: #721c24;
-}
-
-/* Product Sales Tables */
-.sales-tables {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 20px;
-}
-
-.sales-table {
-  background: #f9f9f9;
-  padding: 15px;
-  border-radius: 6px;
-}
-
-/* Generate Invoice Button */
-.generate-invoice {
-  background-color: #007bff;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 16px;
-  margin-bottom: 20px;
-}
-
-.generate-invoice:hover {
-  background-color: #0056b3;
+.overdue {
+  color: #dc3545;
+  font-weight: 500;
 }
 
 /* Pagination */
 .pagination {
   display: flex;
   justify-content: center;
-  align-items: center;
-  gap: 15px;
-  margin-top: 20px;
+  gap: 0.5rem;
+  margin-top: 1rem;
 }
 
-.pagination button {
-  padding: 8px 15px;
+.btn-page {
+  padding: 0.5rem 1rem;
   border: 1px solid #ddd;
-  background: #fff;
+  background: white;
   border-radius: 4px;
   cursor: pointer;
 }
 
-.pagination button:disabled {
-  background: #f5f5f5;
-  cursor: not-allowed;
+.btn-page:hover {
+  background: #f8f9fa;
 }
 
-.pagination button:hover:not(:disabled) {
-  background: #f0f0f0;
+.btn-page.active {
+  background: #3498db;
+  color: white;
+  border-color: #3498db;
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .filters {
+  .sales-tracking {
+    padding: 1rem;
+  }
+
+  .filter-section {
     grid-template-columns: 1fr;
   }
 
-  .sales-tables {
-    grid-template-columns: 1fr;
+  .section-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
   }
 
-  .table-container {
-    margin: 0 -20px;
-    padding: 0 20px;
+  .btn-add {
+    width: 100%;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .btn-action {
+    width: 100%;
+    justify-content: center;
   }
 }
 </style>
