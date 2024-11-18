@@ -148,6 +148,18 @@ const submitForm = () => {
   width: 90%;
   max-width: 500px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  animation: modal-appear 0.3s ease-out;
+}
+
+@keyframes modal-appear {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .modal-content {
