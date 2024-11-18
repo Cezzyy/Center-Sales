@@ -189,7 +189,7 @@ body {
 }
 
 .logo {
-  width: 250px;
+  width: 400px;
   height: 200px;
   margin-bottom: 1.5rem;
 }
