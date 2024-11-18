@@ -1,15 +1,16 @@
 <script setup>
-import { ref, computed } from 'vue';
-import AddSalesModal from './AddSalesModal.vue'
-import AddInvoiceModal from './AddInvoiceModal.vue';
-import ViewOrderModal from './ViewOrderModal.vue';
-import EditOrderModal from './EditOrderModal.vue';
-
+import { ref, computed, defineAsyncComponent } from 'vue';
+const AddSalesModal = defineAsyncComponent(() => import('./AddSalesModal.vue'));
+const AddInvoiceModal = defineAsyncComponent(() => import('./AddInvoiceModal.vue'));
+const ViewOrderModal = defineAsyncComponent(() => import('./ViewOrderModal.vue'));
+const EditOrderModal = defineAsyncComponent(() => import('./EditOrderModal.vue'));
+const EditInvoiceModal = defineAsyncComponent(() => import('./EditInvoiceModal.vue'));
 // State for modal visibility
 const isAddSalesModalOpen = ref(false);
 const isAddInvoiceModalOpen = ref(false);
 const isViewOrderModalOpen = ref(false);
 const isEditOrderModalOpen = ref(false);
+const isEditInvoiceModalOpen = ref(false);
 
 const viewOrder = ref({
   orderId: '',
@@ -29,6 +30,13 @@ const editOrder = ref({
   salesRepresentative: '',
   amount: 0,
   status: '',
+});
+
+const editInvoice = ref({
+  invoiceId: '',
+  customerName: '',
+  amount: 0,
+  dueDate: '',
 });
 
 // Open and close modal functions
@@ -66,6 +74,11 @@ const closeEditOrderModal = () => {
   isEditOrderModalOpen.value = false;
 };
 
+const openEditInvoiceModal = (invoice) => {
+  isEditInvoiceModalOpen.value = true;
+  editInvoice.value = { ...invoice };
+};
+
 // Handle form submission from modal
 const handleEditOrderSubmit = (updatedOrder) => {
   // Find the index of the order to update
@@ -77,13 +90,22 @@ const handleEditOrderSubmit = (updatedOrder) => {
   closeEditOrderModal();
 };
 
+const handleAddInvoiceSubmit = (updatedInvoice) => {
+    const index = invoices.value.findIndex(inv => inv.invoiceId === updatedInvoice.invoiceId);
+    if (index !== -1) {
+        invoices.value[index] = { ...updatedInvoice }; // Update the invoice
+    }
+    isEditInvoiceModalOpen.value = false;
+};
+
+
 const handleAddSalesSubmit = (salesData) => {
   console.log('Sales Data Submitted:', salesData);
   // Add logic to handle the submitted sales data
   closeAddSalesModal();
 };
 
-const handleAddInvoiceSubmit = (invoiceData) => {
+const handleEditInvoiceSubmit = (invoiceData) => {
   console.log('Invoice Data Submitted:', invoiceData);
   closeAddInvoiceModal();
 };
@@ -400,7 +422,7 @@ const resetInvoiceFilters = () => {
                 {{ invoice.daysOverdue > 0 ? invoice.daysOverdue + ' days' : 'On Time' }}
               </td>
               <td class="action-buttons">
-                <button class="btn-action btn-edit">✎ Edit</button>
+                <button class="btn-action btn-edit" @click="openEditInvoiceModal(invoice)">✎ Edit</button>
                 <button class="btn-action btn-paid">✓ Paid</button>
               </td>
             </tr>
@@ -409,6 +431,11 @@ const resetInvoiceFilters = () => {
             </tr>
           </tbody>
         </table>
+        <EditInvoiceModal
+      v-model="isEditInvoiceModalOpen"
+      :invoiceData="editInvoice"
+      @submit="handleEditInvoiceSubmit"
+      />
 
         <!-- Pagination for Invoices -->
         <div class="pagination">
