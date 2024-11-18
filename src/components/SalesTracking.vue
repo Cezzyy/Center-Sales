@@ -3,13 +3,25 @@ import { ref, computed } from 'vue';
 import AddSalesModal from './AddSalesModal.vue'
 import AddInvoiceModal from './AddInvoiceModal.vue';
 import ViewOrderModal from './ViewOrderModal.vue';
+import EditOrderModal from './EditOrderModal.vue';
 
 // State for modal visibility
 const isAddSalesModalOpen = ref(false);
 const isAddInvoiceModalOpen = ref(false);
 const isViewOrderModalOpen = ref(false);
+const isEditOrderModalOpen = ref(false);
 
 const viewOrder = ref({
+  orderId: '',
+  customerName: '',
+  productName: '',
+  quantity: 0,
+  salesRepresentative: '',
+  amount: 0,
+  status: '',
+});
+
+const editOrder = ref({
   orderId: '',
   customerName: '',
   productName: '',
@@ -45,7 +57,26 @@ const closeViewOrderModal = () => {
   isViewOrderModalOpen.value = false;
 };
 
+const openEditOrderModal = (order) => {
+  isEditOrderModalOpen.value = true;
+  editOrder.value = { ...order };
+};
+
+const closeEditOrderModal = () => {
+  isEditOrderModalOpen.value = false;
+};
+
 // Handle form submission from modal
+const handleEditOrderSubmit = (updatedOrder) => {
+  // Find the index of the order to update
+  const index = orders.value.findIndex((order) => order.orderId === updatedOrder.orderId);
+  if (index !== -1) {
+    // Update the order in the table
+    orders.value[index] = { ...updatedOrder };
+  }
+  closeEditOrderModal();
+};
+
 const handleAddSalesSubmit = (salesData) => {
   console.log('Sales Data Submitted:', salesData);
   // Add logic to handle the submitted sales data
@@ -274,7 +305,7 @@ const resetInvoiceFilters = () => {
               <td>${{ order.amount.toFixed(2) }}</td>
               <td><span :class="'status-badge ' + order.status">{{ order.status }}</span></td>
               <td class="action-buttons">
-                <button class="btn-action btn-edit">✎ Edit</button>
+                <button class="btn-action btn-edit" @click="openEditOrderModal(order)">✎ Edit</button>
                 <button class="btn-action btn-view" @click="openViewOrderModal(order)">👁 View</button>
               </td>
             </tr>
@@ -287,6 +318,11 @@ const resetInvoiceFilters = () => {
       v-model="isViewOrderModalOpen"
       :order="viewOrder"
       @update:modelValue="closeViewOrderModal"
+      />
+        <EditOrderModal
+      v-model="isEditOrderModalOpen"
+      :orderData="editOrder"
+      @submit="handleEditOrderSubmit"
       />
 
         <!-- Pagination for Orders -->
