@@ -33,31 +33,52 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="client in clients" :key="client.id">
-            <td>
-              <div class="profile-pic">
-                <img :src="client.profilePicture || '/default-avatar.png'" alt="Profile Picture" />
-              </div>
-            </td>
-            <td>{{ client.firstName }}</td>
-            <td>{{ client.lastName }}</td>
-            <td>{{ client.address }}</td>
-            <td>{{ client.company }}</td>
-            <td>{{ client.email }}</td>
-            <td>{{ client.phone }}</td>
-            <td class="actions">
-              <button class="edit-btn" @click="editClient(client)">Edit</button>
-              <button class="delete-btn">Delete</button>
-            </td>
-          </tr>
-        </tbody>
+      <tr v-for="client in paginatedClients" :key="client.id">
+        <td>
+      <div class="profile-pic">
+        <img :src="client.profilePicture || '/default-avatar.png'" alt="Profile Picture" />
+      </div>
+      </td>
+      <td>{{ client.firstName }}</td>
+      <td>{{ client.lastName }}</td>
+      <td>{{ client.address }}</td>
+      <td>{{ client.company }}</td>
+      <td>{{ client.email }}</td>
+      <td>{{ client.phone }}</td>
+      <td class="actions">
+        <button class="edit-btn" @click="editClient(client)">Edit</button>
+        <button class="delete-btn">Delete</button>
+      </td>
+      </tr>
+    </tbody>
       </table>
+      <div class="pagination">
+  <button class="page-btn" @click="changePage(currentPage - 1)" :disabled="currentPage === 1">
+    Previous
+  </button>
+  <button
+    v-for="page in pageNumbers"
+    :key="page"
+    class="page-btn"
+    :class="{ active: page === currentPage }"
+    @click="changePage(page)"
+  >
+    {{ page }}
+  </button>
+  <button
+    class="page-btn"
+    @click="changePage(currentPage + 1)"
+    :disabled="currentPage === totalPages"
+  >
+    Next
+  </button>
+</div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import AddClientModal from './AddClientModal.vue'
 import EditClientModal from './EditClientModal.vue'
 
@@ -107,6 +128,31 @@ const saveClientChanges = (updatedClient) => {
     clients.value[index] = { ...updatedClient }
   }
   closeEditModal()
+}
+
+// Pagination variables
+const currentPage = ref(1)
+const clientsPerPage = 5
+
+// Computed properties
+const totalPages = computed(() => Math.ceil(clients.value.length / clientsPerPage))
+const paginatedClients = computed(() => {
+  const start = (currentPage.value - 1) * clientsPerPage
+  const end = start + clientsPerPage
+  return clients.value.slice(start, end)
+})
+const pageNumbers = computed(() => {
+  const pages = []
+  for (let i = 1; i <= totalPages.value; i++) {
+    pages.push(i)
+  }
+  return pages
+})
+
+const changePage = (page) => {
+  if (page > 0 && page <= totalPages.value) {
+    currentPage.value = page
+  }
 }
 </script>
 
@@ -275,6 +321,38 @@ const saveClientChanges = (updatedClient) => {
 
 .table-container::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
+  gap: 0.5rem;
+}
+
+.page-btn {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ddd;
+  background-color: white;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.page-btn.active {
+  background: linear-gradient(135deg, #4f46e5, #4338ca);
+  color: white;
+}
+
+.page-btn:hover:not(.active) {
+  background-color: #f5f5f5;
+}
+
+.page-ellipsis {
+  padding: 0.5rem;
+  color: #666;
 }
 
 /* Responsive adjustments */
