@@ -10,6 +10,14 @@
 
     <AddClientModal :isModalOpen="isModalOpen" @close="closeModal" />
 
+    <!-- Edit Client Modal -->
+    <EditClientModal
+      v-if="showEditClientModal"
+      :clientData="selectedClient"
+      @close="closeEditModal"
+      @save="saveClientChanges"
+    />
+
     <div class="table-container">
       <table class="clients-table">
         <thead>
@@ -25,41 +33,126 @@
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <td>
-              <div class="profile-pic">
-                <img src="/src/assets/tifa lockhart.jpg" alt="Profile Picture" />
-              </div>
-            </td>
-            <td>Neil</td>
-            <td>Vallecer</td>
-            <td>123 Business Ave, Suite 100</td>
-            <td>Tech Corp</td>
-            <td>neil.vallecer@gmail.com</td>
-            <td>+1 (555) 123-4567</td>
-            <td class="actions">
-              <button class="edit-btn">Edit</button>
-              <button class="delete-btn">Delete</button>
-            </td>
-          </tr>
-        </tbody>
+      <tr v-for="client in paginatedClients" :key="client.id">
+        <td>
+      <div class="profile-pic">
+        <img :src="client.profilePicture || '/default-avatar.png'" alt="Profile Picture" />
+      </div>
+      </td>
+      <td>{{ client.firstName }}</td>
+      <td>{{ client.lastName }}</td>
+      <td>{{ client.address }}</td>
+      <td>{{ client.company }}</td>
+      <td>{{ client.email }}</td>
+      <td>{{ client.phone }}</td>
+      <td class="actions">
+        <button class="edit-btn" @click="editClient(client)">Edit</button>
+        <button class="delete-btn">Delete</button>
+      </td>
+      </tr>
+    </tbody>
       </table>
+      <div class="pagination">
+  <button class="page-btn" @click="changePage(currentPage - 1)" :disabled="currentPage === 1">
+    Previous
+  </button>
+  <button
+    v-for="page in pageNumbers"
+    :key="page"
+    class="page-btn"
+    :class="{ active: page === currentPage }"
+    @click="changePage(page)"
+  >
+    {{ page }}
+  </button>
+  <button
+    class="page-btn"
+    @click="changePage(currentPage + 1)"
+    :disabled="currentPage === totalPages"
+  >
+    Next
+  </button>
+</div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import AddClientModal from './AddClientModal.vue'
+import EditClientModal from './EditClientModal.vue'
 
+// State variables
 const isModalOpen = ref(false)
+const showEditClientModal = ref(false)
+const selectedClient = ref(null)
+const clients = ref([
+  {
+    id: 1,
+    firstName: 'Neil',
+    lastName: 'Vallecer',
+    address: '123 Business Ave, Suite 100',
+    company: 'Tech Corp',
+    email: 'neil.vallecer@gmail.com',
+    phone: '+1 (555) 123-4567',
+    profilePicture: '/src/assets/tifa lockhart.jpg',
+  },
+  // Add more client data here
+])
 
+// Open Add Client Modal
 const openModal = () => {
   isModalOpen.value = true
 }
 
+// Close Add Client Modal
 const closeModal = () => {
   isModalOpen.value = false
+}
+
+// Open Edit Client Modal
+const editClient = (client) => {
+  selectedClient.value = client
+  showEditClientModal.value = true
+}
+
+// Close Edit Client Modal
+const closeEditModal = () => {
+  showEditClientModal.value = false
+}
+
+// Save changes made to the client
+const saveClientChanges = (updatedClient) => {
+  const index = clients.value.findIndex((c) => c.id === updatedClient.id)
+  if (index !== -1) {
+    clients.value[index] = { ...updatedClient }
+  }
+  closeEditModal()
+}
+
+// Pagination variables
+const currentPage = ref(1)
+const clientsPerPage = 5
+
+// Computed properties
+const totalPages = computed(() => Math.ceil(clients.value.length / clientsPerPage))
+const paginatedClients = computed(() => {
+  const start = (currentPage.value - 1) * clientsPerPage
+  const end = start + clientsPerPage
+  return clients.value.slice(start, end)
+})
+const pageNumbers = computed(() => {
+  const pages = []
+  for (let i = 1; i <= totalPages.value; i++) {
+    pages.push(i)
+  }
+  return pages
+})
+
+const changePage = (page) => {
+  if (page > 0 && page <= totalPages.value) {
+    currentPage.value = page
+  }
 }
 </script>
 
@@ -228,6 +321,38 @@ const closeModal = () => {
 
 .table-container::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
+  gap: 0.5rem;
+}
+
+.page-btn {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ddd;
+  background-color: white;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.page-btn.active {
+  background: linear-gradient(135deg, #4f46e5, #4338ca);
+  color: white;
+}
+
+.page-btn:hover:not(.active) {
+  background-color: #f5f5f5;
+}
+
+.page-ellipsis {
+  padding: 0.5rem;
+  color: #666;
 }
 
 /* Responsive adjustments */

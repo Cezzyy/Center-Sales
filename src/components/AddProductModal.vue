@@ -54,40 +54,40 @@
 </template>
 
 <script setup>
-import { ref, defineProps, defineEmits } from 'vue'
+import { ref, defineProps, defineEmits } from "vue";
 
 const props = defineProps({
   modelValue: {
     type: Boolean,
     required: true,
   },
-})
+});
 
-const emit = defineEmits(['update:modelValue', 'submit'])
+const emit = defineEmits(["update:modelValue", "submit"]);
 
 const formData = ref({
-  name: '',
-  sku: '',
-  category: '',
-  quantity: '',
-  price: '',
-})
+  name: "",
+  sku: "",
+  category: "",
+  quantity: "",
+  price: "",
+});
 
 const closeModal = () => {
-  emit('update:modelValue', false)
-}
+  emit("update:modelValue", false);
+};
 
 const handleSubmit = () => {
-  emit('submit', { ...formData.value })
+  emit("submit", { ...formData.value });
   formData.value = {
-    name: '',
-    sku: '',
-    category: '',
-    quantity: '',
-    price: '',
-  }
-  closeModal()
-}
+    name: "",
+    sku: "",
+    category: "",
+    quantity: "",
+    price: "",
+  };
+  closeModal();
+};
 </script>
 
 <style scoped>

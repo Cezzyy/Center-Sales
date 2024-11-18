@@ -347,6 +347,7 @@ watch([startDate, endDate, selectedSalesRep, selectedCategory, searchQuery], () 
 
     <!-- Export and Print Buttons -->
     <section class="action-buttons">
+      <button class="action-btn add-btn" @click="exportToCSV">Add Report</button>
       <button class="action-btn export-btn" @click="exportToExcel">Export to Excel</button>
       <button class="action-btn export-btn" @click="exportToCSV">Export to CSV</button>
     </section>
@@ -519,6 +520,11 @@ watch([startDate, endDate, selectedSalesRep, selectedCategory, searchQuery], () 
 
 .export-btn {
   background: linear-gradient(135deg, #4f46e5, #4338ca);
+  color: white;
+}
+
+.add-btn {
+  background: linear-gradient(135deg, #064e3b, #6ee7b7);
   color: white;
 }
 

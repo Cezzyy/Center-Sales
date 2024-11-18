@@ -3,8 +3,10 @@ import { ref, computed } from 'vue'
 import { useStorage } from '@vueuse/core'
 import * as XLSX from 'xlsx'
 import AddProductModal from './AddProductModal.vue'
+import EditProductModal from './EditProductModal.vue'
 
 const showAddProductModal = ref(false)
+const showEditProductModal = ref(false)
 
 // Initial sample data
 const initialProducts = [
@@ -128,11 +130,6 @@ const handlePageChange = (page) => {
   }
 }
 
-const editProduct = (product) => {
-  // Initial, this would open a modal or navigate to an edit page
-  console.log('Editing product:', product)
-}
-
 const deleteProduct = (productId) => {
   if (confirm('Are you sure you want to delete this product?')) {
     products.value = products.value.filter((p) => p.id !== productId)
@@ -239,12 +236,13 @@ const exportToExcel = () => {
               </span>
             </td>
             <td class="actions">
-              <button @click="editProduct(product)" class="icon-button edit">Edit</button>
+              <button @click="showEditProductModal = true" class="icon-button edit">Edit</button>
               <button @click="deleteProduct(product.id)" class="icon-button delete">Delete</button>
             </td>
           </tr>
         </tbody>
       </table>
+      <EditProductModal v-model="showEditProductModal" :product="selectedProduct" @submit="handleEditProduct" />
       <!-- Pagination -->
       <div class="pagination-section">
         <button

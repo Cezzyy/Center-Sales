@@ -1,14 +1,14 @@
 <template>
-  <div class="modal-overlay" v-if="isModalOpen" @click.self="closeModal">
+  <div class="modal-overlay" @click.self="$emit('close')">
     <div class="modal-content">
-      <h2>Add New Client</h2>
+      <h2>Edit Client</h2>
 
       <form @submit.prevent="handleSubmit" class="edit-form">
         <!-- Profile Picture Section -->
         <div class="profile-picture-section">
           <div class="preview-container">
             <img
-              :src="previewImage || '/default-avatar.png'"
+              :src="previewImage || clientData.profilePicture || '/default-avatar.png'"
               alt="Profile Preview"
               class="profile-preview"
             />
@@ -93,7 +93,7 @@
             Cancel
           </button>
           <button type="submit" class="done-btn">
-            Add Client
+            Done
           </button>
         </div>
       </form>
@@ -102,30 +102,33 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 
-// Props and Emits
+// Props definition
 const props = defineProps({
-  isModalOpen: {
-    type: Boolean,
+  clientData: {
+    type: Object,
     required: true,
-  },
+    default: () => ({
+      firstName: '',
+      lastName: '',
+      address: '',
+      company: '',
+      email: '',
+      phone: '',
+      profilePicture: ''
+    })
+  }
 })
-const emit = defineEmits(['close'])
 
-// State
+// Emits definition
+const emit = defineEmits(['close', 'save'])
+
+// Reactive data
 const previewImage = ref(null)
-const formData = ref({
-  firstName: '',
-  lastName: '',
-  address: '',
-  company: '',
-  email: '',
-  phone: '',
-  profilePicture: null,
-})
+const formData = ref({...props.clientData})
 
-// Methods
+// Handle image upload
 const handleImageUpload = (event) => {
   const file = event.target.files[0]
   if (file) {
@@ -138,28 +141,20 @@ const handleImageUpload = (event) => {
   }
 }
 
+// Handle form submission
 const handleSubmit = () => {
-  console.log('Form submitted:', formData.value)
-  resetForm()
-  emit('close')
-}
-
-const resetForm = () => {
-  formData.value = {
-    firstName: '',
-    lastName: '',
-    address: '',
-    company: '',
-    email: '',
-    phone: '',
-    profilePicture: null,
-  }
-  previewImage.value = null
+  emit('save', formData.value)
 }
 
 const closeModal = () => {
   emit('close')
 }
+
+// Reset form when modal opens
+onMounted(() => {
+  formData.value = {...props.clientData}
+  previewImage.value = props.clientData.profilePicture
+})
 </script>
 
 <style scoped>
@@ -316,5 +311,4 @@ button:hover {
     width: 100%;
   }
 }
-
 </style>
