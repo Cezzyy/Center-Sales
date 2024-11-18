@@ -10,6 +10,14 @@
 
     <AddClientModal :isModalOpen="isModalOpen" @close="closeModal" />
 
+    <!-- Edit Client Modal -->
+    <EditClientModal
+      v-if="showEditClientModal"
+      :clientData="selectedClient"
+      @close="closeEditModal"
+      @save="saveClientChanges"
+    />
+
     <div class="table-container">
       <table class="clients-table">
         <thead>
@@ -25,20 +33,20 @@
           </tr>
         </thead>
         <tbody>
-          <tr>
+          <tr v-for="client in clients" :key="client.id">
             <td>
               <div class="profile-pic">
-                <img src="/src/assets/tifa lockhart.jpg" alt="Profile Picture" />
+                <img :src="client.profilePicture || '/default-avatar.png'" alt="Profile Picture" />
               </div>
             </td>
-            <td>Neil</td>
-            <td>Vallecer</td>
-            <td>123 Business Ave, Suite 100</td>
-            <td>Tech Corp</td>
-            <td>neil.vallecer@gmail.com</td>
-            <td>+1 (555) 123-4567</td>
+            <td>{{ client.firstName }}</td>
+            <td>{{ client.lastName }}</td>
+            <td>{{ client.address }}</td>
+            <td>{{ client.company }}</td>
+            <td>{{ client.email }}</td>
+            <td>{{ client.phone }}</td>
             <td class="actions">
-              <button class="edit-btn">Edit</button>
+              <button class="edit-btn" @click="editClient(client)">Edit</button>
               <button class="delete-btn">Delete</button>
             </td>
           </tr>
@@ -51,15 +59,54 @@
 <script setup>
 import { ref } from 'vue'
 import AddClientModal from './AddClientModal.vue'
+import EditClientModal from './EditClientModal.vue'
 
+// State variables
 const isModalOpen = ref(false)
+const showEditClientModal = ref(false)
+const selectedClient = ref(null)
+const clients = ref([
+  {
+    id: 1,
+    firstName: 'Neil',
+    lastName: 'Vallecer',
+    address: '123 Business Ave, Suite 100',
+    company: 'Tech Corp',
+    email: 'neil.vallecer@gmail.com',
+    phone: '+1 (555) 123-4567',
+    profilePicture: '/src/assets/tifa lockhart.jpg',
+  },
+  // Add more client data here
+])
 
+// Open Add Client Modal
 const openModal = () => {
   isModalOpen.value = true
 }
 
+// Close Add Client Modal
 const closeModal = () => {
   isModalOpen.value = false
+}
+
+// Open Edit Client Modal
+const editClient = (client) => {
+  selectedClient.value = client
+  showEditClientModal.value = true
+}
+
+// Close Edit Client Modal
+const closeEditModal = () => {
+  showEditClientModal.value = false
+}
+
+// Save changes made to the client
+const saveClientChanges = (updatedClient) => {
+  const index = clients.value.findIndex((c) => c.id === updatedClient.id)
+  if (index !== -1) {
+    clients.value[index] = { ...updatedClient }
+  }
+  closeEditModal()
 }
 </script>
 
