@@ -1,3 +1,82 @@
+<script setup>
+import { ref, computed, defineAsyncComponent } from 'vue'
+const AddClientModal = defineAsyncComponent(() => import('./AddClientModal.vue'))
+const  EditClientModal = defineAsyncComponent(() => import('./EditClientModal.vue'))
+
+// State variables
+const isModalOpen = ref(false)
+const showEditClientModal = ref(false)
+const selectedClient = ref(null)
+const clients = ref([
+  {
+    id: 1,
+    firstName: 'Neil',
+    lastName: 'Vallecer',
+    address: '123 Business Ave, Suite 100',
+    company: 'Tech Corp',
+    email: 'neil.vallecer@gmail.com',
+    phone: '+1 (555) 123-4567',
+    profilePicture: '/src/assets/tifa lockhart.jpg',
+  },
+  // Add more client data here
+])
+
+// Open Add Client Modal
+const openModal = () => {
+  isModalOpen.value = true
+}
+
+// Close Add Client Modal
+const closeModal = () => {
+  isModalOpen.value = false
+}
+
+// Open Edit Client Modal
+const editClient = (client) => {
+  selectedClient.value = client
+  showEditClientModal.value = true
+}
+
+// Close Edit Client Modal
+const closeEditModal = () => {
+  showEditClientModal.value = false
+}
+
+// Save changes made to the client
+const saveClientChanges = (updatedClient) => {
+  const index = clients.value.findIndex((c) => c.id === updatedClient.id)
+  if (index !== -1) {
+    clients.value[index] = { ...updatedClient }
+  }
+  closeEditModal()
+}
+
+// Pagination variables
+const currentPage = ref(1)
+const clientsPerPage = 5
+
+// Computed properties
+const totalPages = computed(() => Math.ceil(clients.value.length / clientsPerPage))
+const paginatedClients = computed(() => {
+  const start = (currentPage.value - 1) * clientsPerPage
+  const end = start + clientsPerPage
+  return clients.value.slice(start, end)
+})
+const pageNumbers = computed(() => {
+  const pages = []
+  for (let i = 1; i <= totalPages.value; i++) {
+    pages.push(i)
+  }
+  return pages
+})
+
+const changePage = (page) => {
+  if (page > 0 && page <= totalPages.value) {
+    currentPage.value = page
+  }
+}
+</script>
+
 <template>
   <div class="clients-section">
     <div class="section-top">
@@ -76,85 +155,6 @@
     </div>
   </div>
 </template>
-
-<script setup>
-import { ref, computed } from 'vue'
-import AddClientModal from './AddClientModal.vue'
-import EditClientModal from './EditClientModal.vue'
-
-// State variables
-const isModalOpen = ref(false)
-const showEditClientModal = ref(false)
-const selectedClient = ref(null)
-const clients = ref([
-  {
-    id: 1,
-    firstName: 'Neil',
-    lastName: 'Vallecer',
-    address: '123 Business Ave, Suite 100',
-    company: 'Tech Corp',
-    email: 'neil.vallecer@gmail.com',
-    phone: '+1 (555) 123-4567',
-    profilePicture: '/src/assets/tifa lockhart.jpg',
-  },
-  // Add more client data here
-])
-
-// Open Add Client Modal
-const openModal = () => {
-  isModalOpen.value = true
-}
-
-// Close Add Client Modal
-const closeModal = () => {
-  isModalOpen.value = false
-}
-
-// Open Edit Client Modal
-const editClient = (client) => {
-  selectedClient.value = client
-  showEditClientModal.value = true
-}
-
-// Close Edit Client Modal
-const closeEditModal = () => {
-  showEditClientModal.value = false
-}
-
-// Save changes made to the client
-const saveClientChanges = (updatedClient) => {
-  const index = clients.value.findIndex((c) => c.id === updatedClient.id)
-  if (index !== -1) {
-    clients.value[index] = { ...updatedClient }
-  }
-  closeEditModal()
-}
-
-// Pagination variables
-const currentPage = ref(1)
-const clientsPerPage = 5
-
-// Computed properties
-const totalPages = computed(() => Math.ceil(clients.value.length / clientsPerPage))
-const paginatedClients = computed(() => {
-  const start = (currentPage.value - 1) * clientsPerPage
-  const end = start + clientsPerPage
-  return clients.value.slice(start, end)
-})
-const pageNumbers = computed(() => {
-  const pages = []
-  for (let i = 1; i <= totalPages.value; i++) {
-    pages.push(i)
-  }
-  return pages
-})
-
-const changePage = (page) => {
-  if (page > 0 && page <= totalPages.value) {
-    currentPage.value = page
-  }
-}
-</script>
 
 <style scoped>
 .clients-section {

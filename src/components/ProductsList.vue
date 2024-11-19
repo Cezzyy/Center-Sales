@@ -1,12 +1,12 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, defineAsyncComponent } from 'vue'
 import { useStorage } from '@vueuse/core'
 import * as XLSX from 'xlsx'
-import AddProductModal from './AddProductModal.vue'
-import EditProductModal from './EditProductModal.vue'
+const AddProductModal = defineAsyncComponent(() => import('./AddProductModal.vue'))
+const EditProductModal = defineAsyncComponent(() => import('./EditProductModal.vue'))
 
 const showAddProductModal = ref(false)
-const showEditProductModal = ref(false)
+const isEditProductModal = ref(false)
 
 // Initial sample data
 const initialProducts = [
@@ -29,6 +29,21 @@ const initialProducts = [
     status: 'Out of Stock',
   },
 ]
+
+const editProduct = ref({
+  id: '',
+    name: '',
+    sku: '',
+    category: '',
+    quantity: 0,
+    price: 0,
+    status: '',
+})
+
+const openEditProductModal = (products) => { 
+  isEditProductModal.value = true
+  editProduct.value = { ...products }
+}
 
 // Reactive state
 const products = useStorage('products', initialProducts)
@@ -236,13 +251,17 @@ const exportToExcel = () => {
               </span>
             </td>
             <td class="actions">
-              <button @click="showEditProductModal = true" class="icon-button edit">Edit</button>
+              <button @click="openEditProductModal(product)" class="icon-button edit">Edit</button>
               <button @click="deleteProduct(product.id)" class="icon-button delete">Delete</button>
             </td>
           </tr>
         </tbody>
       </table>
-      <EditProductModal v-model="showEditProductModal" :product="selectedProduct" @submit="handleEditProduct" />
+      <EditProductModal
+      v-model="isEditProductModal"
+      :product="editProduct"
+      @submit="handleEditProduct"
+      />
       <!-- Pagination -->
       <div class="pagination-section">
         <button

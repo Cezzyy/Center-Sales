@@ -1,23 +1,3 @@
-<template>
-  <div class="dashboard-container">
-    <div class="chart-container">
-      <canvas ref="salesRegionChart"></canvas>
-    </div>
-
-    <div class="chart-container">
-      <canvas ref="clientDistributionChart"></canvas>
-    </div>
-
-    <div class="chart-container">
-      <canvas ref="salesChart"></canvas>
-    </div>
-
-    <div class="chart-container">
-      <canvas ref="clientGrowthChart"></canvas>
-    </div>
-  </div>
-</template>
-
 <script setup>
 import { ref, onMounted } from 'vue'
 import Chart from 'chart.js/auto'
@@ -156,6 +136,26 @@ onMounted(() => {
   createClientGrowthChart()
 })
 </script>
+
+<template>
+  <div class="dashboard-container">
+    <div class="chart-container">
+      <canvas ref="salesRegionChart"></canvas>
+    </div>
+
+    <div class="chart-container">
+      <canvas ref="clientDistributionChart"></canvas>
+    </div>
+
+    <div class="chart-container">
+      <canvas ref="salesChart"></canvas>
+    </div>
+
+    <div class="chart-container">
+      <canvas ref="clientGrowthChart"></canvas>
+    </div>
+  </div>
+</template>
 
 <style scoped>
 .dashboard-container {

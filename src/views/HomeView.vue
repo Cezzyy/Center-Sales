@@ -1,11 +1,12 @@
 <script setup>
-import { ref } from 'vue'
-import HomeDashboard from '../components/HomeDashboard.vue'
-import Clients from '../components/ClientsList.vue'
-import Sales from '../components/SalesTracking.vue'
-import Reports from '../components/ReportsOverview.vue'
-import Products from '../components/ProductsList.vue'
-import ProfileModal from '../components/ProfileModal.vue'
+import { defineAsyncComponent, ref } from 'vue'
+const HomeDashboard = defineAsyncComponent(() => import('../components/HomeDashboard.vue'))
+const Clients = defineAsyncComponent(() => import('../components/ClientsList.vue'))
+const Sales = defineAsyncComponent(() => import('../components/SalesTracking.vue'))
+const Reports = defineAsyncComponent(() => import('../components/ReportsOverview.vue'))
+const Products = defineAsyncComponent(() => import("../components/ProductsList.vue"))
+const ProfileModal =  defineAsyncComponent(() => import('../components/ProfileModal.vue'))
+
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { library } from '@fortawesome/fontawesome-svg-core'
 import {

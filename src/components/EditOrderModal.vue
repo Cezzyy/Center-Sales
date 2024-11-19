@@ -1,3 +1,37 @@
+<script setup>
+import { ref, watch } from 'vue';
+
+const props = defineProps({
+  modelValue: Boolean,
+  orderData: Object,
+});
+
+const emit = defineEmits(['update:modelValue', 'submit']);
+
+const formData = ref({});
+
+// Sync orderData with formData
+watch(
+  () => props.orderData,
+  (newData) => {
+    if (newData) {
+      formData.value = { ...newData }; // Deep copy the data
+    }
+  },
+  { immediate: true }
+);
+
+const closeModal = () => {
+  emit('update:modelValue', false);
+};
+
+const submitForm = () => {
+  emit('submit', { ...formData.value }); // Emit the updated data
+  closeModal();
+};
+</script>
+
+
 <template>
   <div v-if="modelValue" class="modal-overlay">
     <div class="modal-container">
@@ -93,40 +127,6 @@
     </div>
   </div>
 </template>
-
-<script setup>
-import { ref, watch } from 'vue';
-
-const props = defineProps({
-  modelValue: Boolean,
-  orderData: Object,
-});
-
-const emit = defineEmits(['update:modelValue', 'submit']);
-
-const formData = ref({});
-
-// Sync orderData with formData
-watch(
-  () => props.orderData,
-  (newData) => {
-    if (newData) {
-      formData.value = { ...newData }; // Deep copy the data
-    }
-  },
-  { immediate: true }
-);
-
-const closeModal = () => {
-  emit('update:modelValue', false);
-};
-
-const submitForm = () => {
-  emit('submit', { ...formData.value }); // Emit the updated data
-  closeModal();
-};
-</script>
-
 
 <style scoped>
 .modal-overlay {

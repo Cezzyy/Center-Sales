@@ -1,3 +1,53 @@
+<script setup>
+import { ref, computed } from 'vue'
+
+const props = defineProps({
+  modelValue: Boolean,
+  productPrice: {
+    type: Number,
+    default: 0
+  }
+})
+
+const emit = defineEmits(['update:modelValue', 'submit'])
+
+const formData = ref({
+  customerName: '',
+  productName: '',
+  quantity: 1,
+  salesRep: ''
+})
+
+// Generate a random order ID (you might want to implement your own logic)
+const generatedOrderId = computed(() => {
+  return 'ORD-' + Math.random().toString(36).substr(2, 9).toUpperCase()
+})
+
+// Calculate amount based on quantity and product price
+const calculatedAmount = computed(() => {
+  return `$${(formData.value.quantity * props.productPrice).toFixed(2)}`
+})
+
+const closeModal = () => {
+  emit('update:modelValue', false)
+}
+
+const handleSubmit = () => {
+  emit('submit', {
+    ...formData.value,
+    orderId: generatedOrderId.value,
+    amount: calculatedAmount.value
+  })
+  formData.value = {
+    customerName: '',
+    productName: '',
+    quantity: 1,
+    salesRep: ''
+  }
+  closeModal()
+}
+</script>
+
 <template>
   <div v-if="modelValue" class="modal-overlay" @click.self="closeModal">
     <div class="modal-container">
@@ -58,56 +108,6 @@
     </div>
   </div>
 </template>
-
-<script setup>
-import { ref, computed } from 'vue'
-
-const props = defineProps({
-  modelValue: Boolean,
-  productPrice: {
-    type: Number,
-    default: 0
-  }
-})
-
-const emit = defineEmits(['update:modelValue', 'submit'])
-
-const formData = ref({
-  customerName: '',
-  productName: '',
-  quantity: 1,
-  salesRep: ''
-})
-
-// Generate a random order ID (you might want to implement your own logic)
-const generatedOrderId = computed(() => {
-  return 'ORD-' + Math.random().toString(36).substr(2, 9).toUpperCase()
-})
-
-// Calculate amount based on quantity and product price
-const calculatedAmount = computed(() => {
-  return `$${(formData.value.quantity * props.productPrice).toFixed(2)}`
-})
-
-const closeModal = () => {
-  emit('update:modelValue', false)
-}
-
-const handleSubmit = () => {
-  emit('submit', {
-    ...formData.value,
-    orderId: generatedOrderId.value,
-    amount: calculatedAmount.value
-  })
-  formData.value = {
-    customerName: '',
-    productName: '',
-    quantity: 1,
-    salesRep: ''
-  }
-  closeModal()
-}
-</script>
 
 <style scoped>
 .modal-overlay {

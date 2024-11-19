@@ -83,49 +83,35 @@
 </template>
 
 <script setup>
-import { reactive, watch } from 'vue'
+import { ref, watch } from 'vue'
 
 const props = defineProps({
-  modelValue: {
-    type: Boolean,
-    required: true
-  },
-  product: {
-    type: Object,
-    required: true,
-    default: () => ({
-      name: '',
-      sku: '',
-      category: '',
-      quantity: 0,
-      price: 0
-    })
-  },
-  categories: {
-    type: Array,
-    required: true,
-    default: () => ['Electronics', 'Clothing', 'Food', 'Books']
-  }
-})
+  modelValue: Boolean,
+  productData: Object,
+});
 
-const emit = defineEmits(['update:modelValue', 'submit'])
+const emit = defineEmits(['update:modelValue', 'submit']);
 
-const formData = reactive({
-  name: '',
-  sku: '',
-  category: '',
-  quantity: 0,
-  price: 0
-})
+const formData = ref({});
 
-// Watch for changes in the product prop and update form data
+// Sync orderData with formData
 watch(
-  () => props.product,
-  (newValue) => {
-    Object.assign(formData, newValue)
+  () => props.productData,
+  (newData) => {
+    if (newData) {
+      formData.value = { ...newData }; // Deep copy the data
+    }
   },
-  { immediate: true, deep: true }
-)
+  { immediate: true }
+);
+// Watch for changes in the product prop and update form data
+// watch(
+//   () => props.product,
+//   (newValue) => {
+//     Object.assign(formData, newValue)
+//   },
+//   { immediate: true, deep: true }
+// )
 
 const closeModal = () => {
   emit('update:modelValue', false)

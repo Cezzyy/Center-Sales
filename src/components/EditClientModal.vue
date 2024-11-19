@@ -1,3 +1,59 @@
+<script setup>
+import { ref, onMounted } from 'vue'
+
+// Props definition
+const props = defineProps({
+  clientData: {
+    type: Object,
+    required: true,
+    default: () => ({
+      firstName: '',
+      lastName: '',
+      address: '',
+      company: '',
+      email: '',
+      phone: '',
+      profilePicture: ''
+    })
+  }
+})
+
+// Emits definition
+const emit = defineEmits(['close', 'save'])
+
+// Reactive data
+const previewImage = ref(null)
+const formData = ref({...props.clientData})
+
+// Handle image upload
+const handleImageUpload = (event) => {
+  const file = event.target.files[0]
+  if (file) {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      previewImage.value = e.target.result
+      formData.value.profilePicture = e.target.result
+    }
+    reader.readAsDataURL(file)
+  }
+}
+
+// Handle form submission
+const handleSubmit = () => {
+  emit('save', formData.value)
+}
+
+const closeModal = () => {
+  emit('close')
+}
+
+// Reset form when modal opens
+onMounted(() => {
+  formData.value = {...props.clientData}
+  previewImage.value = props.clientData.profilePicture
+})
+</script>
+
 <template>
   <div class="modal-overlay" @click.self="$emit('close')">
     <div class="modal-content">
@@ -100,62 +156,6 @@
     </div>
   </div>
 </template>
-
-<script setup>
-import { ref, onMounted } from 'vue'
-
-// Props definition
-const props = defineProps({
-  clientData: {
-    type: Object,
-    required: true,
-    default: () => ({
-      firstName: '',
-      lastName: '',
-      address: '',
-      company: '',
-      email: '',
-      phone: '',
-      profilePicture: ''
-    })
-  }
-})
-
-// Emits definition
-const emit = defineEmits(['close', 'save'])
-
-// Reactive data
-const previewImage = ref(null)
-const formData = ref({...props.clientData})
-
-// Handle image upload
-const handleImageUpload = (event) => {
-  const file = event.target.files[0]
-  if (file) {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      previewImage.value = e.target.result
-      formData.value.profilePicture = e.target.result
-    }
-    reader.readAsDataURL(file)
-  }
-}
-
-// Handle form submission
-const handleSubmit = () => {
-  emit('save', formData.value)
-}
-
-const closeModal = () => {
-  emit('close')
-}
-
-// Reset form when modal opens
-onMounted(() => {
-  formData.value = {...props.clientData}
-  previewImage.value = props.clientData.profilePicture
-})
-</script>
 
 <style scoped>
 .modal-overlay {

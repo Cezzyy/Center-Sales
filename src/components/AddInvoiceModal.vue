@@ -1,3 +1,62 @@
+<script setup>
+import { ref, computed } from 'vue'
+
+const props = defineProps({
+  modelValue: Boolean,
+  orders: {
+    type: Array,
+    default: () => []
+  }
+})
+
+const emit = defineEmits(['update:modelValue', 'submit'])
+
+const selectedOrderId = ref('')
+const dueDate = ref('')
+
+// Generate a random invoice ID
+const generatedInvoiceId = computed(() => {
+  return 'INV-' + Math.random().toString(36).substr(2, 9).toUpperCase()
+})
+
+// Get the minimum due date (today)
+const minDueDate = computed(() => {
+  const today = new Date()
+  return today.toISOString().split('T')[0]
+})
+
+// Get customer name from selected order
+const customerName = computed(() => {
+  if (!selectedOrderId.value) return ''
+  const selectedOrder = props.orders.find(order => order.orderId === selectedOrderId.value)
+  return selectedOrder ? selectedOrder.customerName : ''
+})
+
+// Get amount from selected order
+const amount = computed(() => {
+  if (!selectedOrderId.value) return ''
+  const selectedOrder = props.orders.find(order => order.orderId === selectedOrderId.value)
+  return selectedOrder ? selectedOrder.amount : ''
+})
+
+const closeModal = () => {
+  emit('update:modelValue', false)
+  selectedOrderId.value = ''
+  dueDate.value = ''
+}
+
+const handleSubmit = () => {
+  emit('submit', {
+    invoiceId: generatedInvoiceId.value,
+    orderId: selectedOrderId.value,
+    customerName: customerName.value,
+    amount: amount.value,
+    dueDate: dueDate.value
+  })
+  closeModal()
+}
+</script>
+
 <template>
   <div v-if="modelValue" class="modal-overlay" @click.self="closeModal">
     <div class="modal-container">
@@ -61,65 +120,6 @@
     </div>
   </div>
 </template>
-
-<script setup>
-import { ref, computed } from 'vue'
-
-const props = defineProps({
-  modelValue: Boolean,
-  orders: {
-    type: Array,
-    default: () => []
-  }
-})
-
-const emit = defineEmits(['update:modelValue', 'submit'])
-
-const selectedOrderId = ref('')
-const dueDate = ref('')
-
-// Generate a random invoice ID
-const generatedInvoiceId = computed(() => {
-  return 'INV-' + Math.random().toString(36).substr(2, 9).toUpperCase()
-})
-
-// Get the minimum due date (today)
-const minDueDate = computed(() => {
-  const today = new Date()
-  return today.toISOString().split('T')[0]
-})
-
-// Get customer name from selected order
-const customerName = computed(() => {
-  if (!selectedOrderId.value) return ''
-  const selectedOrder = props.orders.find(order => order.orderId === selectedOrderId.value)
-  return selectedOrder ? selectedOrder.customerName : ''
-})
-
-// Get amount from selected order
-const amount = computed(() => {
-  if (!selectedOrderId.value) return ''
-  const selectedOrder = props.orders.find(order => order.orderId === selectedOrderId.value)
-  return selectedOrder ? selectedOrder.amount : ''
-})
-
-const closeModal = () => {
-  emit('update:modelValue', false)
-  selectedOrderId.value = ''
-  dueDate.value = ''
-}
-
-const handleSubmit = () => {
-  emit('submit', {
-    invoiceId: generatedInvoiceId.value,
-    orderId: selectedOrderId.value,
-    customerName: customerName.value,
-    amount: amount.value,
-    dueDate: dueDate.value
-  })
-  closeModal()
-}
-</script>
 
 <style scoped>
 .modal-overlay {

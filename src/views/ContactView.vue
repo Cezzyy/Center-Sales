@@ -329,29 +329,6 @@ textarea {
   background-color: #1d4ed8;
   transform: translateX(-5px);
 }
-.back-button {
-  position: absolute;
-  top: 2rem;
-  left: 2rem;
-  padding: 0.75rem 1.5rem;
-  background-color: #2563eb;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  z-index: 100;
-}
-
-.back-button:hover {
-  background-color: #1d4ed8;
-  transform: translateX(-5px);
-}
 
 /* Responsive Design */
 @media (max-width: 768px) {
@@ -377,12 +354,6 @@ textarea {
 
   .map-container {
     height: 300px;
-  }
-  .back-button {
-    top: 1rem;
-    left: 1rem;
-    padding: 0.5rem 1rem;
-    font-size: 0.9rem;
   }
   .back-button {
     top: 1rem;
