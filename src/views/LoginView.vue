@@ -4,7 +4,6 @@ import { useRouter } from 'vue-router'
 
 const router = useRouter();
 
-
 const username = ref('')
 const password = ref('')
 const showPassword = ref(false)
@@ -119,18 +118,6 @@ const mockAccounts = [
 </template>
 
 <style scoped>
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #f5f5f5;
-  color: #333;
-}
-
 /* Container */
 .login-container {
   min-height: 100vh;

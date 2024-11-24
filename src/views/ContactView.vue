@@ -1,3 +1,19 @@
+<script setup>
+import { reactive } from 'vue'
+
+const formData = reactive({
+  name: '',
+  email: '',
+  subject: '',
+  message: ''
+})
+
+const handleSubmit = () => {
+  // Handle form submission logic here
+  console.log('Form submitted:', formData)
+}
+</script>
+
 <template>
   <div class="contact-container">
     <!-- Header Section -->
@@ -106,34 +122,9 @@
   </div>
 </template>
 
-<script setup>
-import { reactive } from 'vue'
-
-const formData = reactive({
-  name: '',
-  email: '',
-  subject: '',
-  message: ''
-})
-
-const handleSubmit = () => {
-  // Handle form submission logic here
-  console.log('Form submitted:', formData)
-}
-</script>
-
 <style scoped>
 /* Base Styles */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
 body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  line-height: 1.6;
-  color: #333;
   background-color: #f8f9fa;
 }
 
