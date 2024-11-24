@@ -124,23 +124,15 @@ const setView = (view) => currentView.value = view
   </div>
 </template>
 
-<style>
-:root {
-  --primary-color: #2563eb;
-  --background-color: #f8fafc;
-  --text-color: #1e293b;
-  --sidebar-width: 250px;
-  --header-height: 64px;
-}
-
+<style scoped>
 h1 {
-  color: var(--text-color);
+  color: rgb(30, 41, 59);
   font-size: 2rem;
 }
 
 .layout {
   min-height: 100vh;
-  background-color: var(--background-color);
+  background-color: #f8fafc;
 }
 
 .header {
@@ -148,7 +140,7 @@ h1 {
   top: 0;
   right: 0;
   left: 0;
-  height: var(--header-height);
+  height: 64px;
   background: white;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   display: flex;
@@ -167,7 +159,7 @@ h1 {
 .section-title {
   font-size: 1.25rem;
   font-weight: 500;
-  color: var(--text-color);
+  color: rgb(30, 41, 59);
 }
 
 .header-icons {
@@ -180,15 +172,15 @@ h1 {
   width: 24px;
   height: 24px;
   cursor: pointer;
-  color: var(--text-color);
+  color: rgb(30, 41, 59)
 }
 
 .sidebar {
   position: fixed;
-  top: var(--header-height);
+  top: 64px;
   left: 0;
   bottom: 0;
-  width: var(--sidebar-width);
+  width: 250px;
   background: white;
   box-shadow: 1px 0 3px rgba(0, 0, 0, 0.1);
   transform: translateX(-100%);
@@ -210,14 +202,14 @@ h1 {
   display: flex;
   align-items: center;
   padding: 0.75rem 1.5rem;
-  color: var(--text-color);
+  color: rgb(30, 41, 59);
   text-decoration: none;
   transition: background-color 0.2s;
   gap: 0.75rem;
 }
 
 .nav-item:hover {
-  background-color: var(--background-color);
+  background-color: rgb(248, 250, 252);
 }
 
 .nav-icon {
@@ -238,19 +230,12 @@ h1 {
 }
 
 .main-content {
-  padding: calc(var(--header-height) + 2rem) 2rem 2rem;
+  padding: calc(64px + 2rem) 2rem 2rem;
   transition: margin-left 0.3s ease;
-}
-
-.content-shifted {
-  margin-left: var(--sidebar-width);
+  background: rgb(248, 250, 252);
 }
 
 @media (max-width: 768px) {
-  .content-shifted {
-    margin-left: 0;
-  }
-
   .sidebar {
     z-index: 90;
   }
