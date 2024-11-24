@@ -2,7 +2,7 @@
 import { ref, computed, watch, defineAsyncComponent } from 'vue'
 import { saveAs } from 'file-saver'
 import * as XLSX from 'xlsx'
-const AddReportModal =  defineAsyncComponent(() => import('../components/AddReportModal.vue'))
+const AddReportModal =  defineAsyncComponent(() => import('../UserSideModals/AddReportModal.vue'))
 
 // Sample data structure (replace with actual API calls in production)
 const salesData = ref([

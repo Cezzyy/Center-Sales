@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, defineAsyncComponent } from 'vue'
-const AddClientModal = defineAsyncComponent(() => import('./AddClientModal.vue'))
-const  EditClientModal = defineAsyncComponent(() => import('./EditClientModal.vue'))
+const AddClientModal = defineAsyncComponent(() => import('../UserSideModals/AddClientModal.vue'))
+const  EditClientModal = defineAsyncComponent(() => import('../UserSideModals/EditClientModal.vue'))
 
 // State variables
 const isModalOpen = ref(false)

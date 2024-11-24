@@ -1,14 +1,14 @@
 <script setup>
-import { defineAsyncComponent, ref } from 'vue'
-const HomeDashboard = defineAsyncComponent(() => import('../components/UserComponents/HomeDashboard.vue'))
-const Clients = defineAsyncComponent(() => import('../components/UserComponents/ClientsList.vue'))
-const Sales = defineAsyncComponent(() => import('../components/UserComponents/SalesTracking.vue'))
-const Reports = defineAsyncComponent(() => import('../components/UserComponents/ReportsOverview.vue'))
-const Products = defineAsyncComponent(() => import("../components/UserComponents/ProductsList.vue"))
-const ProfileModal =  defineAsyncComponent(() => import('../components/UserSideModals/ProfileModal.vue'))
+import { defineAsyncComponent, ref } from "vue";
+const HomeDashboard = defineAsyncComponent(() => import("../components/UserComponents/HomeDashboard.vue"));
+const Clients = defineAsyncComponent(() => import("../components/UserComponents/ClientsList.vue"));
+const Sales = defineAsyncComponent(() => import("../components/UserComponents/SalesTracking.vue"));
+const Reports = defineAsyncComponent(() => import("../components/UserComponents/ReportsOverview.vue"));
+const Products = defineAsyncComponent(() => import("../components/UserComponents/ProductsList.vue"));
+const ProfileModal = defineAsyncComponent(() => import("../components/UserSideModals/ProfileModal.vue"));
 
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-import { library } from '@fortawesome/fontawesome-svg-core'
+import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
+import { library } from "@fortawesome/fontawesome-svg-core";
 import {
   faChartSimple,
   faPerson,
@@ -16,7 +16,7 @@ import {
   faSquarePollHorizontal,
   faBoxesStacked,
   faSignOutAlt,
-} from '@fortawesome/free-solid-svg-icons'
+} from "@fortawesome/free-solid-svg-icons";
 
 library.add(
   faChartSimple,
@@ -24,24 +24,24 @@ library.add(
   faSuitcase,
   faSquarePollHorizontal,
   faBoxesStacked,
-  faSignOutAlt,
-)
+  faSignOutAlt
+);
 
-const isSidebarOpen = ref(false)
-const currentView = ref('Dashboard')
-const isProfileModalVisible = ref(false)
+const isSidebarOpen = ref(false);
+const currentView = ref("Dashboard");
+const isProfileModalVisible = ref(false);
 
 const toggleSidebar = () => {
-  isSidebarOpen.value = !isSidebarOpen.value
-}
+  isSidebarOpen.value = !isSidebarOpen.value;
+};
 
 const toggleProfileModal = () => {
-  isProfileModalVisible.value = !isProfileModalVisible.value
-}
+  isProfileModalVisible.value = !isProfileModalVisible.value;
+};
 
 const setView = (view) => {
-  currentView.value = view
-}
+  currentView.value = view;
+};
 </script>
 
 <template>

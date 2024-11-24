@@ -2,8 +2,8 @@
 import { ref, computed, defineAsyncComponent } from 'vue'
 import { useStorage } from '@vueuse/core'
 import * as XLSX from 'xlsx'
-const AddProductModal = defineAsyncComponent(() => import('./AddProductModal.vue'))
-const EditProductModal = defineAsyncComponent(() => import('./EditProductModal.vue'))
+const AddProductModal = defineAsyncComponent(() => import('../UserSideModals/AddProductModal.vue'))
+const EditProductModal = defineAsyncComponent(() => import('../UserSideModals/EditProductModal.vue'))
 
 const showAddProductModal = ref(false)
 const isEditProductModal = ref(false)
