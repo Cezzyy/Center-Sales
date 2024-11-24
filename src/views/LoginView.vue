@@ -1,3 +1,55 @@
+<script setup>
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter();
+
+
+const username = ref('')
+const password = ref('')
+const showPassword = ref(false)
+
+const handleLogin = () => {
+  const account = mockAccounts.find(
+    (acc) => acc.username === username.value && acc.password === password.value
+  );
+
+  if (account) {
+    console.log('Login successful:', account);
+    // Navigate to /home and pass user data as state
+    localStorage.setItem('isAuthenticated', true);
+    router.push({
+      path: '/home',
+      state: { user: account },
+    });
+  } else {
+    alert('Invalid username or password');
+  }
+};
+
+//Mock user accounts
+const mockAccounts = [
+  {
+    username: 'john_doe',
+    password: '123456',
+    firstName: 'John',
+    lastName: 'Doe',
+    position: 'Sales Manager',
+    email: 'john.doe@example.com',
+    phone: '123-456-7890',
+  },
+  {
+    username: 'jane_smith',
+    password: 'password123',
+    firstName: 'Jane',
+    lastName: 'Smith',
+    position: 'Client Manager',
+    email: 'jane.smith@example.com',
+    phone: '987-654-3210',
+  },
+];
+</script>
+
 <template>
   <div class="login-container">
     <!-- Header -->
@@ -49,7 +101,7 @@
                 <button
                   type="button"
                   class="toggle-password"
-                  @click="togglePassword"
+                  @click="showPassword= !showPassword"
                 >
                   {{ showPassword ? '👁️' : '👁️‍🗨️' }}
                 </button>
@@ -65,60 +117,6 @@
     </main>
   </div>
 </template>
-
-<script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-
-const router = useRouter();
-
-const handleLogin = () => {
-  const account = mockAccounts.find(
-    (acc) => acc.username === username.value && acc.password === password.value
-  );
-
-  if (account) {
-    console.log('Login successful:', account);
-    // Navigate to /home and pass user data as state
-    router.push({
-      path: '/home',
-      state: { user: account },
-    });
-  } else {
-    alert('Invalid username or password');
-  }
-};
-
-//Mock user accounts
-const mockAccounts = [
-  {
-    username: 'john_doe',
-    password: '123456',
-    firstName: 'John',
-    lastName: 'Doe',
-    position: 'Sales Manager',
-    email: 'john.doe@example.com',
-    phone: '123-456-7890',
-  },
-  {
-    username: 'jane_smith',
-    password: 'password123',
-    firstName: 'Jane',
-    lastName: 'Smith',
-    position: 'Client Manager',
-    email: 'jane.smith@example.com',
-    phone: '987-654-3210',
-  },
-];
-
-const username = ref('')
-const password = ref('')
-const showPassword = ref(false)
-
-const togglePassword = () => {
-  showPassword.value = !showPassword.value
-}
-</script>
 
 <style scoped>
 * {
