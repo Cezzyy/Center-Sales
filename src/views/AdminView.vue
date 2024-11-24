@@ -1,14 +1,14 @@
 <script setup>
-import { defineAsyncComponent, ref } from 'vue'
-const HomeDashboard = defineAsyncComponent(() => import('../components/UserComponents/HomeDashboard.vue'))
-const Clients = defineAsyncComponent(() => import('../components/UserComponents/ClientsList.vue'))
-const Sales = defineAsyncComponent(() => import('../components/UserComponents/SalesTracking.vue'))
-const Reports = defineAsyncComponent(() => import('../components/UserComponents/ReportsOverview.vue'))
-const Products = defineAsyncComponent(() => import("../components/UserComponents/ProductsList.vue"))
-const ProfileModal =  defineAsyncComponent(() => import('../components/UserSideModals/ProfileModal.vue'))
+import { defineAsyncComponent, ref } from "vue";
+const HomeDashboard = defineAsyncComponent(() => import("../components/UserComponents/HomeDashboard.vue"));
+const Clients = defineAsyncComponent(() => import("../components/UserComponents/ClientsList.vue"));
+const Sales = defineAsyncComponent(() => import("../components/UserComponents/SalesTracking.vue"));
+const Reports = defineAsyncComponent(() => import("../components/UserComponents/ReportsOverview.vue"));
+const Products = defineAsyncComponent(() => import("../components/UserComponents/ProductsList.vue"));
+const ProfileModal = defineAsyncComponent(() => import("../components/UserSideModals/ProfileModal.vue"));
 
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-import { library } from '@fortawesome/fontawesome-svg-core'
+import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
+import { library } from "@fortawesome/fontawesome-svg-core";
 import {
   faChartSimple,
   faPerson,
@@ -16,7 +16,7 @@ import {
   faSquarePollHorizontal,
   faBoxesStacked,
   faSignOutAlt,
-} from '@fortawesome/free-solid-svg-icons'
+} from "@fortawesome/free-solid-svg-icons";
 
 library.add(
   faChartSimple,
@@ -24,14 +24,24 @@ library.add(
   faSuitcase,
   faSquarePollHorizontal,
   faBoxesStacked,
-  faSignOutAlt,
-)
+  faSignOutAlt
+);
 
-const isSidebarOpen = ref(false)
-const currentView = ref('Dashboard')
-const isProfileModalVisible = ref(false)
+const isSidebarOpen = ref(false);
+const currentView = ref("Dashboard");
+const isProfileModalVisible = ref(false);
 
-const setView = (view) => currentView.value = view
+const toggleSidebar = () => {
+  isSidebarOpen.value = !isSidebarOpen.value;
+};
+
+const toggleProfileModal = () => {
+  isProfileModalVisible.value = !isProfileModalVisible.value;
+};
+
+const setView = (view) => {
+  currentView.value = view;
+};
 </script>
 
 <template>
@@ -39,7 +49,7 @@ const setView = (view) => currentView.value = view
     <!-- Header -->
     <header class="header">
       <div class="header-left">
-        <div class="icon" @click="isSidebarOpen = !isSidebarOpen">
+        <div class="icon" @click="toggleSidebar">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
@@ -58,7 +68,7 @@ const setView = (view) => currentView.value = view
         <div class="section-title">{{ currentView }}</div>
       </div>
       <div class="header-icons">
-        <div class="icon" @click="isProfileModalVisible = !isProfileModalVisible">
+        <div class="icon" @click="toggleProfileModal">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
@@ -125,15 +135,23 @@ const setView = (view) => currentView.value = view
   </div>
 </template>
 
-<style scoped>
+<style>
+:root {
+  --primary-color: #2563eb;
+  --background-color: #f8fafc;
+  --text-color: #1e293b;
+  --sidebar-width: 250px;
+  --header-height: 64px;
+}
+
 h1 {
-  color: rgb(30, 41, 59);
+  color: var(--text-color);
   font-size: 2rem;
 }
 
 .layout {
   min-height: 100vh;
-  background-color: #f8fafc;
+  background-color: var(--background-color);
 }
 
 .header {
@@ -141,7 +159,7 @@ h1 {
   top: 0;
   right: 0;
   left: 0;
-  height: 64px;
+  height: var(--header-height);
   background: white;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   display: flex;
@@ -160,7 +178,7 @@ h1 {
 .section-title {
   font-size: 1.25rem;
   font-weight: 500;
-  color: rgb(30, 41, 59);
+  color: var(--text-color);
 }
 
 .header-icons {
@@ -173,15 +191,15 @@ h1 {
   width: 24px;
   height: 24px;
   cursor: pointer;
-  color: rgb(30, 41, 59)
+  color: var(--text-color);
 }
 
 .sidebar {
   position: fixed;
-  top: 64px;
+  top: var(--header-height);
   left: 0;
   bottom: 0;
-  width: 250px;
+  width: var(--sidebar-width);
   background: white;
   box-shadow: 1px 0 3px rgba(0, 0, 0, 0.1);
   transform: translateX(-100%);
@@ -203,14 +221,14 @@ h1 {
   display: flex;
   align-items: center;
   padding: 0.75rem 1.5rem;
-  color: rgb(30, 41, 59);
+  color: var(--text-color);
   text-decoration: none;
   transition: background-color 0.2s;
   gap: 0.75rem;
 }
 
 .nav-item:hover {
-  background-color: rgb(248, 250, 252);
+  background-color: var(--background-color);
 }
 
 .nav-icon {
@@ -231,12 +249,19 @@ h1 {
 }
 
 .main-content {
-  padding: calc(64px + 2rem) 2rem 2rem;
+  padding: calc(var(--header-height) + 2rem) 2rem 2rem;
   transition: margin-left 0.3s ease;
-  background: rgb(248, 250, 252);
+}
+
+.content-shifted {
+  margin-left: var(--sidebar-width);
 }
 
 @media (max-width: 768px) {
+  .content-shifted {
+    margin-left: 0;
+  }
+
   .sidebar {
     z-index: 90;
   }

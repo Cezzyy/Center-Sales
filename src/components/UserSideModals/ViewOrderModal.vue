@@ -1,3 +1,31 @@
+<script setup>
+defineProps({
+  modelValue: {
+    type: Boolean,
+    required: true
+  },
+  order: {
+    type: Object,
+    required: true,
+    default: () => ({
+      orderId: '',
+      customerName: '',
+      productName: '',
+      quantity: 0,
+      salesRepresentative: '',
+      amount: 0,
+      status: ''
+    })
+  }
+});
+
+const emit = defineEmits(['update:modelValue']);
+
+const closeModal = () => {
+  emit('update:modelValue', false);
+};
+</script>
+
 <template>
   <div v-if="modelValue" class="modal-overlay">
     <div class="modal-container">
@@ -51,34 +79,6 @@
     </div>
   </div>
 </template>
-
-<script setup>
-defineProps({
-  modelValue: {
-    type: Boolean,
-    required: true
-  },
-  order: {
-    type: Object,
-    required: true,
-    default: () => ({
-      orderId: '',
-      customerName: '',
-      productName: '',
-      quantity: 0,
-      salesRepresentative: '',
-      amount: 0,
-      status: ''
-    })
-  }
-});
-
-const emit = defineEmits(['update:modelValue']);
-
-const closeModal = () => {
-  emit('update:modelValue', false);
-};
-</script>
 
 <style scoped>
 .modal-overlay {

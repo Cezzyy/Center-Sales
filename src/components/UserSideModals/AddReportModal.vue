@@ -1,67 +1,3 @@
-<template>
-  <div v-if="modelValue" class="modal-overlay" @click.self="closeModal">
-    <div class="modal-container">
-      <h2>Add Invoice</h2>
-      <form @submit.prevent="handleSubmit">
-        <div class="form-group">
-          <label>Invoice ID:</label>
-          <input type="text" :value="generatedInvoiceId" disabled />
-        </div>
-
-        <div class="form-group">
-          <label>Select Order:</label>
-          <select
-            v-model="selectedOrderId"
-            required
-          >
-            <option value="">Select an order</option>
-            <option
-              v-for="order in orders"
-              :key="order.orderId"
-              :value="order.orderId"
-            >
-              {{ order.orderId }}
-            </option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label>Customer Name:</label>
-          <input
-            type="text"
-            :value="customerName"
-            disabled
-          />
-        </div>
-
-        <div class="form-group">
-          <label>Amount:</label>
-          <input
-            type="text"
-            :value="amount"
-            disabled
-          />
-        </div>
-
-        <div class="form-group">
-          <label>Due Date:</label>
-          <input
-            type="date"
-            v-model="dueDate"
-            :min="minDueDate"
-            required
-          />
-        </div>
-
-        <div class="button-group">
-          <button type="button" class="cancel-btn" @click="closeModal">Cancel</button>
-          <button type="submit" class="add-btn">Add</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</template>
-
 <script setup>
 import { ref, computed } from 'vue'
 
@@ -79,8 +15,8 @@ const selectedOrderId = ref('')
 const dueDate = ref('')
 
 // Generate a random invoice ID
-const generatedInvoiceId = computed(() => {
-  return 'INV-' + Math.random().toString(36).substr(2, 9).toUpperCase()
+const generatedReportId = computed(() => {
+  return 'RPT-' + Math.random().toString(36).substr(2, 9).toUpperCase()
 })
 
 // Get the minimum due date (today)
@@ -111,7 +47,7 @@ const closeModal = () => {
 
 const handleSubmit = () => {
   emit('submit', {
-    invoiceId: generatedInvoiceId.value,
+    invoiceId: generatedReportId.value,
     orderId: selectedOrderId.value,
     customerName: customerName.value,
     amount: amount.value,
@@ -120,6 +56,70 @@ const handleSubmit = () => {
   closeModal()
 }
 </script>
+
+<template>
+  <div v-if="modelValue" class="modal-overlay" @click.self="closeModal">
+    <div class="modal-container">
+      <h2>Add Report</h2>
+      <form @submit.prevent="handleSubmit">
+        <div class="form-group">
+          <label>Report ID:</label>
+          <input type="text" :value="generatedReportId" disabled />
+        </div>
+
+        <div class="form-group">
+          <label>Select Order:</label>
+          <select
+            v-model="selectedOrderId"
+            required
+          >
+            <option value="">Select an order</option>
+            <option
+              v-for="order in orders"
+              :key="order.orderId"
+              :value="order.orderId"
+            >
+              {{ order.orderId }}
+            </option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Client Name:</label>
+          <input
+            type="text"
+            :value="customerName"
+            disabled
+          />
+        </div>
+
+        <div class="form-group">
+          <label>Amount:</label>
+          <input
+            type="text"
+            :value="amount"
+            disabled
+          />
+        </div>
+
+        <div class="form-group">
+          <label> Date:</label>
+          <input
+            type="date"
+            v-model="dueDate"
+            :min="minDueDate"
+            required
+          />
+        </div>
+
+        <div class="button-group">
+          <button type="button" class="cancel-btn" @click="closeModal">Cancel</button>
+          <button type="submit" class="add-btn">Add</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</template>
 
 <style scoped>
 .modal-overlay {

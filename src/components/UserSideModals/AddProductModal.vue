@@ -1,3 +1,40 @@
+<script setup>
+import { ref, defineProps, defineEmits } from "vue";
+
+const props = defineProps({
+  modelValue: {
+    type: Boolean,
+    required: true,
+  },
+});
+
+const emit = defineEmits(["update:modelValue", "submit"]);
+
+const formData = ref({
+  name: "",
+  sku: "",
+  category: "",
+  quantity: "",
+  price: "",
+});
+
+const closeModal = () => {
+  emit("update:modelValue", false);
+};
+
+const handleSubmit = () => {
+  emit("submit", { ...formData.value });
+  formData.value = {
+    name: "",
+    sku: "",
+    category: "",
+    quantity: "",
+    price: "",
+  };
+  closeModal();
+};
+</script>
+
 <template>
   <div v-if="modelValue" class="modal-overlay">
     <div class="modal">
@@ -52,43 +89,6 @@
     </div>
   </div>
 </template>
-
-<script setup>
-import { ref, defineProps, defineEmits } from "vue";
-
-const props = defineProps({
-  modelValue: {
-    type: Boolean,
-    required: true,
-  },
-});
-
-const emit = defineEmits(["update:modelValue", "submit"]);
-
-const formData = ref({
-  name: "",
-  sku: "",
-  category: "",
-  quantity: "",
-  price: "",
-});
-
-const closeModal = () => {
-  emit("update:modelValue", false);
-};
-
-const handleSubmit = () => {
-  emit("submit", { ...formData.value });
-  formData.value = {
-    name: "",
-    sku: "",
-    category: "",
-    quantity: "",
-    price: "",
-  };
-  closeModal();
-};
-</script>
 
 <style scoped>
 .modal-overlay {

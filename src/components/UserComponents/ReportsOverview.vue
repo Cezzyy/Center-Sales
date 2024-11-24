@@ -1,7 +1,8 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, defineAsyncComponent } from 'vue'
 import { saveAs } from 'file-saver'
 import * as XLSX from 'xlsx'
+const AddReportModal =  defineAsyncComponent(() => import('../UserSideModals/AddReportModal.vue'))
 
 // Sample data structure (replace with actual API calls in production)
 const salesData = ref([
@@ -137,6 +138,12 @@ const currentPage = ref(1)
 const itemsPerPage = ref(10)
 const sortBy = ref('date')
 const sortDirection = ref('desc')
+
+const isAddReportModal = ref(false)
+
+const showAddReportModal = () => {
+  isAddReportModal.value = true;
+}
 
 // Computed Properties for Unique Values
 const salesReps = computed(() => {
@@ -347,10 +354,14 @@ watch([startDate, endDate, selectedSalesRep, selectedCategory, searchQuery], () 
 
     <!-- Export and Print Buttons -->
     <section class="action-buttons">
-      <button class="action-btn add-btn" @click="exportToCSV">Add Report</button>
+      <button class="action-btn add-btn" @click="showAddReportModal">Add Report</button>
       <button class="action-btn export-btn" @click="exportToExcel">Export to Excel</button>
       <button class="action-btn export-btn" @click="exportToCSV">Export to CSV</button>
     </section>
+    <AddReportModal
+    v-model="isAddReportModal"
+    />
+
 
     <!-- Sales Report Table -->
     <section class="table-section">

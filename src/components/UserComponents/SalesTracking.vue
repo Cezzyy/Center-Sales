@@ -1,10 +1,10 @@
 <script setup>
 import { ref, computed, defineAsyncComponent } from 'vue';
-const AddSalesModal = defineAsyncComponent(() => import('./AddSalesModal.vue'));
-const AddInvoiceModal = defineAsyncComponent(() => import('./AddInvoiceModal.vue'));
-const ViewOrderModal = defineAsyncComponent(() => import('./ViewOrderModal.vue'));
-const EditOrderModal = defineAsyncComponent(() => import('./EditOrderModal.vue'));
-const EditInvoiceModal = defineAsyncComponent(() => import('./EditInvoiceModal.vue'));
+const AddSalesModal = defineAsyncComponent(() => import('../UserSideModals/AddSalesModal.vue'));
+const AddInvoiceModal = defineAsyncComponent(() => import('../UserSideModals/AddInvoiceModal.vue'));
+const ViewOrderModal = defineAsyncComponent(() => import('../UserSideModals/ViewOrderModal.vue'));
+const EditOrderModal = defineAsyncComponent(() => import('../UserSideModals/EditOrderModal.vue'));
+const EditInvoiceModal = defineAsyncComponent(() => import('../UserSideModals/EditInvoiceModal.vue'));
 // State for modal visibility
 const isAddSalesModalOpen = ref(false);
 const isAddInvoiceModalOpen = ref(false);

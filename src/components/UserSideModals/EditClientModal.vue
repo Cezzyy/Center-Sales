@@ -1,14 +1,70 @@
+<script setup>
+import { ref, onMounted } from 'vue'
+
+// Props definition
+const props = defineProps({
+  clientData: {
+    type: Object,
+    required: true,
+    default: () => ({
+      firstName: '',
+      lastName: '',
+      address: '',
+      company: '',
+      email: '',
+      phone: '',
+      profilePicture: ''
+    })
+  }
+})
+
+// Emits definition
+const emit = defineEmits(['close', 'save'])
+
+// Reactive data
+const previewImage = ref(null)
+const formData = ref({...props.clientData})
+
+// Handle image upload
+const handleImageUpload = (event) => {
+  const file = event.target.files[0]
+  if (file) {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      previewImage.value = e.target.result
+      formData.value.profilePicture = e.target.result
+    }
+    reader.readAsDataURL(file)
+  }
+}
+
+// Handle form submission
+const handleSubmit = () => {
+  emit('save', formData.value)
+}
+
+const closeModal = () => {
+  emit('close')
+}
+
+// Reset form when modal opens
+onMounted(() => {
+  formData.value = {...props.clientData}
+  previewImage.value = props.clientData.profilePicture
+})
+</script>
+
 <template>
-  <div class="modal-overlay" v-if="isModalOpen" @click.self="closeModal">
+  <div class="modal-overlay" @click.self="$emit('close')">
     <div class="modal-content">
-      <h2>Add New Client</h2>
+      <h2>Edit Client</h2>
 
       <form @submit.prevent="handleSubmit" class="edit-form">
         <!-- Profile Picture Section -->
         <div class="profile-picture-section">
           <div class="preview-container">
             <img
-              :src="previewImage || '/default-avatar.png'"
+              :src="previewImage || clientData.profilePicture || '/default-avatar.png'"
               alt="Profile Preview"
               class="profile-preview"
             />
@@ -93,74 +149,13 @@
             Cancel
           </button>
           <button type="submit" class="done-btn">
-            Add Client
+            Done
           </button>
         </div>
       </form>
     </div>
   </div>
 </template>
-
-<script setup>
-import { ref } from 'vue'
-
-// Props and Emits
-const props = defineProps({
-  isModalOpen: {
-    type: Boolean,
-    required: true,
-  },
-})
-const emit = defineEmits(['close'])
-
-// State
-const previewImage = ref(null)
-const formData = ref({
-  firstName: '',
-  lastName: '',
-  address: '',
-  company: '',
-  email: '',
-  phone: '',
-  profilePicture: null,
-})
-
-// Methods
-const handleImageUpload = (event) => {
-  const file = event.target.files[0]
-  if (file) {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      previewImage.value = e.target.result
-      formData.value.profilePicture = e.target.result
-    }
-    reader.readAsDataURL(file)
-  }
-}
-
-const handleSubmit = () => {
-  console.log('Form submitted:', formData.value)
-  resetForm()
-  emit('close')
-}
-
-const resetForm = () => {
-  formData.value = {
-    firstName: '',
-    lastName: '',
-    address: '',
-    company: '',
-    email: '',
-    phone: '',
-    profilePicture: null,
-  }
-  previewImage.value = null
-}
-
-const closeModal = () => {
-  emit('close')
-}
-</script>
 
 <style scoped>
 .modal-overlay {
@@ -316,5 +311,4 @@ button:hover {
     width: 100%;
   }
 }
-
 </style>
