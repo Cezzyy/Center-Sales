@@ -1,4 +1,12 @@
 import { defineStore } from 'pinia';
+// import { computed } from 'vue';
+
+// Utility function for the filter getter problem
+// const createFilterMatcher = (filterValue, field) => {
+//   if (!filterValue) return () => true;
+//   const lowercaseFilter = filterValue.toLowerCase();
+//   return (item) => item[field].toLowerCase().includes(lowercaseFilter);
+// };
 
 export const useOrderInvoiceStore = defineStore('orderInvoice', {
   // State
@@ -128,6 +136,34 @@ export const useOrderInvoiceStore = defineStore('orderInvoice', {
         );
       });
     },
+    //Solution for the filter getter problem part 2:
+    // filteredOrders: computed(state => {
+    //   // Create matchers only once per filter change
+    //   const matchers = {
+    //     orderId: createFilterMatcher(state.orderFilters.orderId, 'orderId'),
+    //     customerName: createFilterMatcher(state.orderFilters.customerName, 'customerName'),
+    //     productName: createFilterMatcher(state.orderFilters.productName, 'productName'),
+    //     status: state.orderFilters.status
+    //       ? (order) => order.status === state.orderFilters.status
+    //       : () => true
+    //   };
+
+    //   // Date range matcher
+    //   const dateRangeMatcher = (order) => {
+    //     if (!state.orderFilters.dateFrom || !state.orderFilters.dateTo) return true;
+    //     return order.date >= state.orderFilters.dateFrom &&
+    //            order.date <= state.orderFilters.dateTo;
+    //   };
+
+    //   // Single pass filter
+    //   return state.orders.filter(order =>
+    //     matchers.orderId(order) &&
+    //     matchers.customerName(order) &&
+    //     matchers.productName(order) &&
+    //     matchers.status(order) &&
+    //     dateRangeMatcher(order)
+    //   );
+    // }),
     paginatedOrders(state) {
       const startIndex = (state.currentPageOrders - 1) * state.itemsPerPage;
       const endIndex = startIndex + state.itemsPerPage;
