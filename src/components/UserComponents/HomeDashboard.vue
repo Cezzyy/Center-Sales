@@ -164,7 +164,6 @@ onMounted(() => {
   grid-template-rows: repeat(2, 1fr);
   gap: 30px;
   padding: 40px;
-  background-color: #f8fafc;
 }
 
 .chart-container {

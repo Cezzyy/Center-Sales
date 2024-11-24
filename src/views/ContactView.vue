@@ -1,3 +1,82 @@
+<script setup>
+import { reactive } from 'vue'
+
+const formData = reactive({
+  name: '',
+  email: '',
+  subject: '',
+  message: ''
+})
+
+const errors = reactive({
+  name: '',
+  email: '',
+  subject: '',
+  message: ''
+})
+
+const validateEmail = (email) => {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+}
+
+const validateForm = () => {
+  let isValid = true
+
+  // Name validation
+  if (!formData.name) {
+    errors.name = 'Name is required'
+    isValid = false
+  } else if (formData.name.length < 2) {
+    errors.name = 'Name must be at least 2 characters'
+    isValid = false
+  } else {
+    errors.name = ''
+  }
+
+  // Email validation
+  if (!formData.email) {
+    errors.email = 'Email is required'
+    isValid = false
+  } else if (!validateEmail(formData.email)) {
+    errors.email = 'Please enter a valid email address'
+    isValid = false
+  } else {
+    errors.email = ''
+  }
+
+  // Subject validation
+  if (!formData.subject) {
+    errors.subject = 'Subject is required'
+    isValid = false
+  } else if (formData.subject.length < 3) {
+    errors.subject = 'Subject must be at least 3 characters'
+    isValid = false
+  } else {
+    errors.subject = ''
+  }
+
+  // Message validation
+  if (!formData.message) {
+    errors.message = 'Message is required'
+    isValid = false
+  } else if (formData.message.length < 10) {
+    errors.message = 'Message must be at least 10 characters'
+    isValid = false
+  } else {
+    errors.message = ''
+  }
+
+  return isValid
+}
+
+const handleSubmit = () => {
+  if (validateForm()) {
+    // Handle form submission logic here
+    console.log('Form submitted:', formData)
+  }
+}
+</script>
+
 <template>
   <div class="contact-container">
     <!-- Header Section -->
@@ -48,9 +127,10 @@
                 type="text"
                 id="name"
                 v-model="formData.name"
-                required
+                :class="{ 'error-input': errors.name }"
                 placeholder="Enter your full name"
               >
+              <span class="error-message" v-if="errors.name">{{ errors.name }}</span>
             </div>
 
             <div class="form-group">
@@ -59,9 +139,10 @@
                 type="email"
                 id="email"
                 v-model="formData.email"
-                required
+                :class="{ 'error-input': errors.email }"
                 placeholder="Enter your email"
               >
+              <span class="error-message" v-if="errors.email">{{ errors.email }}</span>
             </div>
 
             <div class="form-group">
@@ -70,9 +151,10 @@
                 type="text"
                 id="subject"
                 v-model="formData.subject"
-                required
+                :class="{ 'error-input': errors.subject }"
                 placeholder="Enter message subject"
               >
+              <span class="error-message" v-if="errors.subject">{{ errors.subject }}</span>
             </div>
 
             <div class="form-group">
@@ -80,10 +162,11 @@
               <textarea
                 id="message"
                 v-model="formData.message"
-                required
+                :class="{ 'error-input': errors.message }"
                 placeholder="Enter your message"
                 rows="5"
               ></textarea>
+              <span class="error-message" v-if="errors.message">{{ errors.message }}</span>
             </div>
 
             <button type="submit" class="submit-button">Send Message</button>
@@ -106,34 +189,9 @@
   </div>
 </template>
 
-<script setup>
-import { reactive } from 'vue'
-
-const formData = reactive({
-  name: '',
-  email: '',
-  subject: '',
-  message: ''
-})
-
-const handleSubmit = () => {
-  // Handle form submission logic here
-  console.log('Form submitted:', formData)
-}
-</script>
-
 <style scoped>
 /* Base Styles */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
 body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  line-height: 1.6;
-  color: #333;
   background-color: #f8f9fa;
 }
 
@@ -328,6 +386,17 @@ textarea {
 .back-button:hover {
   background-color: #1d4ed8;
   transform: translateX(-5px);
+}
+
+.error-input {
+  border-color: #dc2626 !important;
+}
+
+.error-message {
+  color: #dc2626;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+  display: block;
 }
 
 /* Responsive Design */

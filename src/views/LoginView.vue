@@ -4,6 +4,10 @@ import { useRouter } from 'vue-router'
 
 const router = useRouter();
 
+const username = ref('')
+const password = ref('')
+const showPassword = ref(false)
+
 const handleLogin = () => {
   const account = mockAccounts.find(
     (acc) => acc.username === username.value && acc.password === password.value
@@ -12,6 +16,7 @@ const handleLogin = () => {
   if (account) {
     console.log('Login successful:', account);
     // Navigate to /home and pass user data as state
+    localStorage.setItem('isAuthenticated', true);
     router.push({
       path: '/home',
       state: { user: account },
@@ -42,14 +47,6 @@ const mockAccounts = [
     phone: '987-654-3210',
   },
 ];
-
-const username = ref('')
-const password = ref('')
-const showPassword = ref(false)
-
-const togglePassword = () => {
-  showPassword.value = !showPassword.value
-}
 </script>
 
 <template>
@@ -103,7 +100,7 @@ const togglePassword = () => {
                 <button
                   type="button"
                   class="toggle-password"
-                  @click="togglePassword"
+                  @click="showPassword= !showPassword"
                 >
                   {{ showPassword ? '👁️' : '👁️‍🗨️' }}
                 </button>
@@ -121,18 +118,6 @@ const togglePassword = () => {
 </template>
 
 <style scoped>
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #f5f5f5;
-  color: #333;
-}
-
 /* Container */
 .login-container {
   min-height: 100vh;
