@@ -1,5 +1,6 @@
 <script setup>
-import { ref, defineProps, defineEmits } from "vue";
+import { ref, defineProps, defineEmits, onMounted } from "vue";
+import { useProductsStore } from '@/stores/productStore'
 
 const props = defineProps({
   modelValue: {
@@ -8,8 +9,10 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["update:modelValue", "submit"]);
+const emit = defineEmits(["update:modelValue"]);
+const store = useProductsStore();
 
+const errors = ref({});
 const formData = ref({
   name: "",
   sku: "",
@@ -18,20 +21,95 @@ const formData = ref({
   price: "",
 });
 
-const closeModal = () => {
-  emit("update:modelValue", false);
+// Generate random SKU on component mount
+const generateSKU = () => {
+  const prefix = 'PRD';
+  const timestamp = Date.now().toString().slice(-4);
+  const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+  return `${prefix}-${timestamp}-${random}`;
 };
 
-const handleSubmit = () => {
-  emit("submit", { ...formData.value });
+onMounted(() => {
+  formData.value.sku = generateSKU();
+});
+
+const validateForm = () => {
+  errors.value = {};
+  
+  if (!formData.value.name.trim()) {
+    errors.value.name = 'Product name is required';
+  } else if (formData.value.name.length < 3) {
+    errors.value.name = 'Product name must be at least 3 characters';
+  }
+
+  if (!formData.value.category) {
+    errors.value.category = 'Category is required';
+  }
+
+  if (!formData.value.quantity) {
+    errors.value.quantity = 'Quantity is required';
+  } else if (parseInt(formData.value.quantity) < 0) {
+    errors.value.quantity = 'Quantity cannot be negative';
+  }
+
+  if (!formData.value.price) {
+    errors.value.price = 'Price is required';
+  } else if (parseFloat(formData.value.price) <= 0) {
+    errors.value.price = 'Price must be greater than 0';
+  }
+
+  return Object.keys(errors.value).length === 0;
+};
+
+const handlePriceInput = (event) => {
+  let value = event.target.value;
+  value = value.replace(/-/g, '');
+  if (parseFloat(value) < 0) {
+    value = '0';
+  }
+  formData.value.price = value;
+};
+
+const handleQuantityInput = (event) => {
+  let value = event.target.value;
+  value = value.replace(/-/g, '');
+  if (parseInt(value) < 0) {
+    value = '0';
+  }
+  formData.value.quantity = value;
+};
+
+const closeModal = () => {
+  errors.value = {};
   formData.value = {
     name: "",
-    sku: "",
+    sku: generateSKU(),
     category: "",
     quantity: "",
     price: "",
   };
-  closeModal();
+  emit("update:modelValue", false);
+};
+
+const handleSubmit = () => {
+  if (validateForm()) {
+    // Create new product object
+    const newProduct = {
+      id: Date.now(), // Generate unique ID
+      name: formData.value.name,
+      sku: formData.value.sku,
+      category: formData.value.category,
+      quantity: parseInt(formData.value.quantity),
+      price: parseFloat(formData.value.price),
+      status: parseInt(formData.value.quantity) > 0 ? 'In Stock' : 'Out of Stock'
+    };
+
+    // Add product to store
+    store.addProduct(newProduct);
+    
+    // Close modal and reset form
+    closeModal();
+  }
 };
 </script>
 
@@ -46,39 +124,63 @@ const handleSubmit = () => {
       <form @submit.prevent="handleSubmit" class="modal-form">
         <div class="form-group">
           <label>Product Name</label>
-          <input type="text" v-model="formData.name" required />
+          <input 
+            type="text" 
+            v-model="formData.name" 
+            :class="{ 'error': errors.name }"
+            placeholder="Enter product name"
+          />
+          <span class="error-message" v-if="errors.name">{{ errors.name }}</span>
         </div>
 
         <div class="form-group">
-          <label>SKU</label>
-          <input type="text" v-model="formData.sku" required />
+          <label>SKU (Auto-generated)</label>
+          <input type="text" v-model="formData.sku" disabled class="disabled-input" />
         </div>
 
         <div class="form-group">
           <label>Category</label>
-          <select v-model="formData.category" required>
+          <select 
+            v-model="formData.category"
+            :class="{ 'error': errors.category }"
+          >
             <option value="">Select Category</option>
-            <option value="electronics">Electronics</option>
-            <option value="clothing">Clothing</option>
-            <option value="food">Food</option>
-            <option value="accessories">Accessories</option>
+            <option value="Electronics">Electronics</option>
+            <option value="Clothing">Clothing</option>
+            <option value="Food">Food</option>
+            <option value="Accessories">Accessories</option>
           </select>
+          <span class="error-message" v-if="errors.category">{{ errors.category }}</span>
         </div>
 
         <div class="form-group">
           <label>Quantity</label>
-          <select v-model="formData.quantity" required>
-            <option value="">Select Quantity</option>
-            <option v-for="n in 100" :key="n" :value="n">{{ n }}</option>
-          </select>
+          <input 
+            type="number" 
+            v-model="formData.quantity" 
+            min="0"
+            @input="handleQuantityInput"
+            onkeypress="return event.charCode >= 48"
+            :class="{ 'error': errors.quantity }"
+          />
+          <span class="error-message" v-if="errors.quantity">{{ errors.quantity }}</span>
         </div>
 
         <div class="form-group">
-          <label>Price</label>
-          <div class="price-input">
-            <span class="currency-symbol">$</span>
-            <input type="number" v-model="formData.price" step="0.01" min="0" required />
+          <label>Price (PHP)</label>
+          <div class="price-input" :class="{ 'error': errors.price }">
+            <span class="currency-symbol">₱</span>
+            <input 
+              type="number" 
+              v-model="formData.price" 
+              step="0.01" 
+              min="0"
+              @input="handlePriceInput"
+              onkeypress="return event.charCode >= 48"
+              placeholder="0.00"
+            />
           </div>
+          <span class="error-message" v-if="errors.price">{{ errors.price }}</span>
         </div>
 
         <div class="modal-actions">
@@ -187,7 +289,7 @@ const handleSubmit = () => {
   left: 10px;
   top: 50%;
   transform: translateY(-50%);
-  color: #666;
+  color: #495057;
 }
 
 .price-input input {
@@ -230,6 +332,21 @@ const handleSubmit = () => {
   background: #357abd;
 }
 
+.error {
+  border-color: #dc3545 !important;
+}
+
+.error-message {
+  color: #dc3545;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+.disabled-input {
+  background-color: #f8f9fa;
+  cursor: not-allowed;
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -248,12 +365,6 @@ const handleSubmit = () => {
     transform: translateY(0);
     opacity: 1;
   }
-}
-
-/* Form validation styles */
-input:invalid,
-select:invalid {
-  border-color: #ff4444;
 }
 
 /* Responsive adjustments */

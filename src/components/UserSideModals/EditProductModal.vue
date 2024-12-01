@@ -3,78 +3,85 @@
     <div class="modal-container">
       <div class="modal-header">
         <h2>Edit Product</h2>
+        <button class="close-button" @click="closeModal">×</button>
       </div>
 
       <div class="modal-body">
         <form @submit.prevent="handleSubmit">
           <div class="form-group">
-            <label for="name">Name:</label>
+            <label for="name">Product Name</label>
             <input
               type="text"
               id="name"
               v-model="formData.name"
-              required
+              :class="{ 'error': errors.name }"
+              placeholder="Enter product name"
             />
+            <span class="error-message" v-if="errors.name">{{ errors.name }}</span>
           </div>
 
           <div class="form-group">
-            <label for="sku">SKU:</label>
+            <label for="sku">SKU (Read-only)</label>
             <input
               type="text"
               id="sku"
               v-model="formData.sku"
-              required
+              disabled
+              class="disabled-input"
             />
           </div>
 
           <div class="form-group">
-            <label for="category">Category:</label>
+            <label for="category">Category</label>
             <select
               id="category"
               v-model="formData.category"
-              required
+              :class="{ 'error': errors.category }"
             >
               <option value="">Select Category</option>
-              <option
-                v-for="category in props.categories"
-                :key="category"
-                :value="category"
-              >
-                {{ category }}
-              </option>
+              <option value="Electronics">Electronics</option>
+              <option value="Clothing">Clothing</option>
+              <option value="Food">Food</option>
+              <option value="Accessories">Accessories</option>
             </select>
+            <span class="error-message" v-if="errors.category">{{ errors.category }}</span>
           </div>
 
           <div class="form-group">
-            <label for="quantity">Quantity:</label>
+            <label for="quantity">Quantity</label>
             <input
               type="number"
               id="quantity"
               v-model="formData.quantity"
               min="0"
-              required
+              @input="handleQuantityInput"
+              onkeypress="return event.charCode >= 48"
+              :class="{ 'error': errors.quantity }"
             />
+            <span class="error-message" v-if="errors.quantity">{{ errors.quantity }}</span>
           </div>
 
           <div class="form-group">
-            <label for="price">Price:</label>
-            <input
-              type="number"
-              id="price"
-              v-model="formData.price"
-              min="0"
-              step="0.01"
-              required
-            />
+            <label for="price">Price (PHP)</label>
+            <div class="price-input" :class="{ 'error': errors.price }">
+              <span class="currency-symbol">₱</span>
+              <input
+                type="number"
+                id="price"
+                v-model="formData.price"
+                min="0"
+                step="0.01"
+                @input="handlePriceInput"
+                onkeypress="return event.charCode >= 48"
+                placeholder="0.00"
+              />
+            </div>
+            <span class="error-message" v-if="errors.price">{{ errors.price }}</span>
           </div>
 
           <div class="modal-footer">
-            <button type="button" class="btn-cancel" @click="closeModal">
-              Cancel
-            </button>
-            <button type="submit" class="btn-done">
-              Done
-            </button>
+            <button type="button" class="btn-cancel" @click="closeModal">Cancel</button>
+            <button type="submit" class="btn-submit">Update Product</button>
           </div>
         </form>
       </div>
@@ -83,44 +90,105 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch } from 'vue';
+import { useProductsStore } from '@/stores/productStore';
 
 const props = defineProps({
   modelValue: Boolean,
-  productData: Object,
+  product: {
+    type: Object,
+    required: true
+  }
 });
 
-const emit = defineEmits(['update:modelValue', 'submit']);
+const emit = defineEmits(['update:modelValue']);
+const store = useProductsStore();
+const errors = ref({});
 
-const formData = ref({});
+const formData = ref({
+  id: '',
+  name: '',
+  sku: '',
+  category: '',
+  quantity: '',
+  price: '',
+});
 
-// Sync orderData with formData
+// Watch for changes in the product prop and update form data
 watch(
-  () => props.productData,
-  (newData) => {
-    if (newData) {
-      formData.value = { ...newData }; // Deep copy the data
+  () => props.product,
+  (newProduct) => {
+    if (newProduct) {
+      formData.value = { ...newProduct };
     }
   },
-  { immediate: true }
+  { immediate: true, deep: true }
 );
-// Watch for changes in the product prop and update form data
-// watch(
-//   () => props.product,
-//   (newValue) => {
-//     Object.assign(formData, newValue)
-//   },
-//   { immediate: true, deep: true }
-// )
+
+const validateForm = () => {
+  errors.value = {};
+  
+  if (!formData.value.name.trim()) {
+    errors.value.name = 'Product name is required';
+  } else if (formData.value.name.length < 3) {
+    errors.value.name = 'Product name must be at least 3 characters';
+  }
+
+  if (!formData.value.category) {
+    errors.value.category = 'Category is required';
+  }
+
+  if (!formData.value.quantity) {
+    errors.value.quantity = 'Quantity is required';
+  } else if (parseInt(formData.value.quantity) < 0) {
+    errors.value.quantity = 'Quantity cannot be negative';
+  }
+
+  if (!formData.value.price) {
+    errors.value.price = 'Price is required';
+  } else if (parseFloat(formData.value.price) <= 0) {
+    errors.value.price = 'Price must be greater than 0';
+  }
+
+  return Object.keys(errors.value).length === 0;
+};
+
+const handlePriceInput = (event) => {
+  let value = event.target.value;
+  value = value.replace(/-/g, '');
+  if (parseFloat(value) < 0) {
+    value = '0';
+  }
+  formData.value.price = value;
+};
+
+const handleQuantityInput = (event) => {
+  let value = event.target.value;
+  value = value.replace(/-/g, '');
+  if (parseInt(value) < 0) {
+    value = '0';
+  }
+  formData.value.quantity = value;
+};
 
 const closeModal = () => {
-  emit('update:modelValue', false)
-}
+  emit('update:modelValue', false);
+  errors.value = {};
+};
 
 const handleSubmit = () => {
-  emit('submit', { ...formData })
-  closeModal()
-}
+  if (validateForm()) {
+    const updatedProduct = {
+      ...formData.value,
+      quantity: parseInt(formData.value.quantity),
+      price: parseFloat(formData.value.price),
+      status: parseInt(formData.value.quantity) > 0 ? 'In Stock' : 'Out of Stock'
+    };
+    
+    store.updateProduct(updatedProduct);
+    closeModal();
+  }
+};
 </script>
 
 <style scoped>
@@ -146,6 +214,138 @@ const handleSubmit = () => {
   animation: modal-appear 0.3s ease-out;
 }
 
+.modal-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h2 {
+  margin: 0;
+  color: #333;
+  font-size: 1.5rem;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #666;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.close-button:hover {
+  color: #333;
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #333;
+  font-weight: 500;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+  transition: all 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #4a90e2;
+  box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+}
+
+.error {
+  border-color: #dc3545 !important;
+}
+
+.error-message {
+  color: #dc3545;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+.disabled-input {
+  background-color: #f8f9fa;
+  cursor: not-allowed;
+}
+
+.price-input {
+  position: relative;
+}
+
+.currency-symbol {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #495057;
+}
+
+.price-input input {
+  padding-left: 25px;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.btn-cancel,
+.btn-submit {
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-cancel {
+  background: #fff;
+  border: 1px solid #ddd;
+  color: #666;
+}
+
+.btn-cancel:hover {
+  background: #f5f5f5;
+}
+
+.btn-submit {
+  background: #4a90e2;
+  border: none;
+  color: white;
+}
+
+.btn-submit:hover {
+  background: #357abd;
+}
+
 @keyframes modal-appear {
   from {
     opacity: 0;
@@ -157,90 +357,19 @@ const handleSubmit = () => {
   }
 }
 
-.modal-header {
-  padding: 1.5rem;
-  border-bottom: 1px solid #eee;
-}
+@media (max-width: 600px) {
+  .modal-container {
+    width: 95%;
+    margin: 10px;
+  }
 
-.modal-header h2 {
-  margin: 0;
-  color: #333;
-  font-size: 1.5rem;
-}
+  .modal-footer {
+    flex-direction: column;
+  }
 
-.modal-body {
-  padding: 1.5rem;
-}
-
-.form-group {
-  margin-bottom: 1rem;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 0.5rem;
-  color: #666;
-  font-weight: 500;
-}
-
-.form-group input,
-.form-group select {
-  width: 100%;
-  padding: 0.5rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 1rem;
-}
-
-.form-group input:focus,
-.form-group select:focus {
-  outline: none;
-  border-color: #4a90e2;
-  box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
-}
-
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-  margin-top: 2rem;
-}
-
-.btn-cancel,
-.btn-done {
-  padding: 0.5rem 1.5rem;
-  border: none;
-  border-radius: 4px;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.btn-cancel {
-  background-color: #f1f1f1;
-  color: #666;
-}
-
-.btn-cancel:hover {
-  background-color: #e4e4e4;
-}
-
-.btn-done {
-  background-color: #4a90e2;
-  color: white;
-}
-
-.btn-done:hover {
-  background-color: #357abd;
-}
-
-input::-webkit-outer-spin-button,
-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-input[type=number] {
-  -moz-appearance: textfield;
+  .btn-cancel,
+  .btn-submit {
+    width: 100%;
+  }
 }
 </style>
