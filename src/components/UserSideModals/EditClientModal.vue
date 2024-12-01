@@ -1,5 +1,10 @@
 <script setup>
 import { ref, onMounted } from 'vue'
+import defaultProfilePic from '@/assets/defaultprofile.png'
+import { useClientStore } from '@/stores/clientStore'
+
+// Initialize store
+const store = useClientStore()
 
 // Props definition
 const props = defineProps({
@@ -13,59 +18,136 @@ const props = defineProps({
       company: '',
       email: '',
       phone: '',
-      profilePicture: ''
+      profilePicture: defaultProfilePic
     })
   }
 })
 
 // Emits definition
-const emit = defineEmits(['close', 'save'])
+const emit = defineEmits(['close'])
 
-// Reactive data
-const previewImage = ref(null)
+// Form state
+const previewImage = ref(props.clientData.profilePicture || defaultProfilePic)
 const formData = ref({...props.clientData})
 
-// Handle image upload
+// Validation state
+const errors = ref({})
+const touched = ref({})
+
+// Validation rules
+const rules = {
+  firstName: (value) => {
+    if (!value) return 'First name is required'
+    if (value.length < 2) return 'First name must be at least 2 characters'
+    return null
+  },
+  lastName: (value) => {
+    if (!value) return 'Last name is required'
+    if (value.length < 2) return 'Last name must be at least 2 characters'
+    return null
+  },
+  email: (value) => {
+    if (!value) return 'Email is required'
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(value)) return 'Please enter a valid email address'
+    return null
+  },
+  phone: (value) => {
+    if (!value) return 'Phone number is required'
+    // Philippine phone number format: +63 followed by 10 digits
+    // Accepts formats: +63XXXXXXXXXX, +63 XXXXXXXXXX, 09XXXXXXXXX
+    const phoneRegex = /^(?:\+63|0)(?:9\d{9})$/
+    const cleanedNumber = value.replace(/\s+/g, '')
+    
+    if (!phoneRegex.test(cleanedNumber)) {
+      return 'Please enter a valid Philippine phone number (+63/09XXXXXXXXX)'
+    }
+    
+    // Convert to standardized format if valid
+    if (cleanedNumber.startsWith('0')) {
+      formData.value.phone = '+63' + cleanedNumber.slice(1)
+    }
+    
+    return null
+  },
+  address: (value) => {
+    if (!value) return 'Address is required'
+    if (value.length < 5) return 'Please enter a complete address'
+    return null
+  },
+  company: (value) => {
+    if (!value) return 'Company name is required'
+    return null
+  }
+}
+
+// Validation methods
+const validateField = (field) => {
+  const value = formData.value[field]
+  const rule = rules[field]
+  if (rule) {
+    errors.value[field] = rule(value)
+  }
+  touched.value[field] = true
+}
+
+const validateForm = () => {
+  Object.keys(rules).forEach(field => validateField(field))
+  return Object.values(errors.value).every(error => error === null)
+}
+
+// Image handling
 const handleImageUpload = (event) => {
   const file = event.target.files[0]
   if (file) {
+    if (file.size > 5000000) {
+      errors.value.profilePicture = 'Image must be less than 5MB'
+      return
+    }
+    
     const reader = new FileReader()
     reader.onload = (e) => {
       previewImage.value = e.target.result
       formData.value.profilePicture = e.target.result
+      errors.value.profilePicture = null
     }
     reader.readAsDataURL(file)
   }
 }
 
-// Handle form submission
+// Form submission
 const handleSubmit = () => {
-  emit('save', formData.value)
+  if (validateForm()) {
+    store.updateClient({ ...formData.value })
+    emit('close')
+  }
 }
 
 const closeModal = () => {
   emit('close')
 }
 
-// Reset form when modal opens
+// Initialize form when modal opens
 onMounted(() => {
-  formData.value = {...props.clientData}
-  previewImage.value = props.clientData.profilePicture
+  formData.value = { ...props.clientData }
+  previewImage.value = props.clientData.profilePicture || defaultProfilePic
+  errors.value = {}
+  touched.value = {}
 })
 </script>
 
 <template>
-  <div class="modal-overlay" @click.self="$emit('close')">
+  <div class="modal-overlay" @click.self="closeModal">
     <div class="modal-content">
       <h2>Edit Client</h2>
 
-      <form @submit.prevent="handleSubmit" class="edit-form">
-        <!-- Profile Picture Section -->
+      <form @submit.prevent="handleSubmit" class="edit-form" novalidate>
+        <!-- Profile Picture -->
         <div class="profile-picture-section">
           <div class="preview-container">
             <img
-              :src="previewImage || clientData.profilePicture || '/default-avatar.png'"
-              alt="Profile Preview"
+              :src="previewImage"
+              :alt="`${formData.firstName || 'Default'} Profile Picture`"
               class="profile-preview"
             />
           </div>
@@ -79,48 +161,41 @@ onMounted(() => {
               accept="image/*"
               @change="handleImageUpload"
             />
+            <span v-if="errors.profilePicture" class="error-message">
+              {{ errors.profilePicture }}
+            </span>
           </div>
         </div>
 
         <!-- Form Fields -->
-        <div class="form-group">
-          <label for="firstName">First Name</label>
-          <input
-            type="text"
-            id="firstName"
-            v-model="formData.firstName"
-            required
-          />
-        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="firstName">First Name</label>
+            <input
+              type="text"
+              id="firstName"
+              v-model="formData.firstName"
+              @blur="validateField('firstName')"
+              :class="{ 'error': touched.firstName && errors.firstName }"
+            />
+            <span v-if="touched.firstName && errors.firstName" class="error-message">
+              {{ errors.firstName }}
+            </span>
+          </div>
 
-        <div class="form-group">
-          <label for="lastName">Last Name</label>
-          <input
-            type="text"
-            id="lastName"
-            v-model="formData.lastName"
-            required
-          />
-        </div>
-
-        <div class="form-group">
-          <label for="address">Address</label>
-          <input
-            type="text"
-            id="address"
-            v-model="formData.address"
-            required
-          />
-        </div>
-
-        <div class="form-group">
-          <label for="company">Company</label>
-          <input
-            type="text"
-            id="company"
-            v-model="formData.company"
-            required
-          />
+          <div class="form-group">
+            <label for="lastName">Last Name</label>
+            <input
+              type="text"
+              id="lastName"
+              v-model="formData.lastName"
+              @blur="validateField('lastName')"
+              :class="{ 'error': touched.lastName && errors.lastName }"
+            />
+            <span v-if="touched.lastName && errors.lastName" class="error-message">
+              {{ errors.lastName }}
+            </span>
+          </div>
         </div>
 
         <div class="form-group">
@@ -129,8 +204,12 @@ onMounted(() => {
             type="email"
             id="email"
             v-model="formData.email"
-            required
+            @blur="validateField('email')"
+            :class="{ 'error': touched.email && errors.email }"
           />
+          <span v-if="touched.email && errors.email" class="error-message">
+            {{ errors.email }}
+          </span>
         </div>
 
         <div class="form-group">
@@ -139,8 +218,42 @@ onMounted(() => {
             type="tel"
             id="phone"
             v-model="formData.phone"
-            required
+            @blur="validateField('phone')"
+            :class="{ 'error': touched.phone && errors.phone }"
+            placeholder="+63 9XX XXX XXXX"
           />
+          <span v-if="touched.phone && errors.phone" class="error-message">
+            {{ errors.phone }}
+          </span>
+          <small class="helper-text">Format: +63 or 09 followed by 9 digits</small>
+        </div>
+
+        <div class="form-group">
+          <label for="company">Company</label>
+          <input
+            type="text"
+            id="company"
+            v-model="formData.company"
+            @blur="validateField('company')"
+            :class="{ 'error': touched.company && errors.company }"
+          />
+          <span v-if="touched.company && errors.company" class="error-message">
+            {{ errors.company }}
+          </span>
+        </div>
+
+        <div class="form-group">
+          <label for="address">Address</label>
+          <input
+            type="text"
+            id="address"
+            v-model="formData.address"
+            @blur="validateField('address')"
+            :class="{ 'error': touched.address && errors.address }"
+          />
+          <span v-if="touched.address && errors.address" class="error-message">
+            {{ errors.address }}
+          </span>
         </div>
 
         <!-- Action Buttons -->
@@ -149,7 +262,7 @@ onMounted(() => {
             Cancel
           </button>
           <button type="submit" class="done-btn">
-            Done
+            Save Changes
           </button>
         </div>
       </form>
@@ -179,31 +292,60 @@ onMounted(() => {
   max-width: 500px;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  animation: modal-appear 0.3s ease-out;
-}
-
-@keyframes modal-appear {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-h2 {
-  margin: 0 0 1.5rem 0;
-  color: #333;
-  text-align: center;
 }
 
 .edit-form {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.form-row {
+  display: flex;
+  gap: 1rem;
+}
+
+.form-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-group label {
+  font-weight: 500;
+  color: #374151;
+}
+
+.form-group input {
+  padding: 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.form-group input.error {
+  border-color: #ef4444;
+  background-color: #fef2f2;
+}
+
+.error-message {
+  color: #ef4444;
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.helper-text {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-top: 0.25rem;
 }
 
 .profile-picture-section {
@@ -215,11 +357,11 @@ h2 {
 }
 
 .preview-container {
-  width: 150px;
-  height: 150px;
+  width: 100px;
+  height: 100px;
   border-radius: 50%;
   overflow: hidden;
-  border: 3px solid #e0e0e0;
+  border: 2px solid #e5e7eb;
 }
 
 .profile-preview {
@@ -228,87 +370,69 @@ h2 {
   object-fit: cover;
 }
 
-.upload-button input[type="file"] {
-  display: none;
-}
-
-.custom-file-upload {
-  padding: 8px 16px;
-  background-color: #f0f0f0;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-.custom-file-upload:hover {
-  background-color: #e0e0e0;
-}
-
-.form-group {
+.upload-button {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 0.5rem;
 }
 
-label {
-  font-weight: 600;
-  color: #555;
-}
-
-input {
-  padding: 0.75rem;
-  border: 1px solid #ddd;
+.custom-file-upload {
+  padding: 0.5rem 1rem;
+  background-color: #f3f4f6;
   border-radius: 4px;
-  font-size: 1rem;
-  transition: border-color 0.3s;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: background-color 0.2s;
 }
 
-input:focus {
-  outline: none;
-  border-color: #4a90e2;
+.custom-file-upload:hover {
+  background-color: #e5e7eb;
+}
+
+input[type="file"] {
+  display: none;
 }
 
 .button-group {
   display: flex;
-  gap: 1rem;
-  margin-top: 1.5rem;
   justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1rem;
 }
 
-button {
-  padding: 0.75rem 1.5rem;
-  border: none;
+.cancel-btn, .done-btn {
+  padding: 0.5rem 1rem;
   border-radius: 4px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity 0.3s;
-}
-
-button:hover {
-  opacity: 0.9;
+  font-weight: 500;
+  transition: all 0.2s;
 }
 
 .cancel-btn {
-  background-color: #f0f0f0;
-  color: #333;
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.cancel-btn:hover {
+  background-color: #e5e7eb;
 }
 
 .done-btn {
-  background-color: #4a90e2;
+  background-color: #3b82f6;
   color: white;
 }
 
-@media (max-width: 480px) {
-  .modal-content {
-    padding: 1rem;
-  }
+.done-btn:hover {
+  background-color: #2563eb;
+}
 
-  .button-group {
+@media (max-width: 640px) {
+  .form-row {
     flex-direction: column;
   }
-
-  button {
-    width: 100%;
+  
+  .modal-content {
+    padding: 1rem;
   }
 }
 </style>
