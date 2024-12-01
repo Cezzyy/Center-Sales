@@ -1,104 +1,123 @@
 <script setup>
-import { ref, computed, defineAsyncComponent } from 'vue'
-const AddClientModal = defineAsyncComponent(() => import('../UserSideModals/AddClientModal.vue'))
-const  EditClientModal = defineAsyncComponent(() => import('../UserSideModals/EditClientModal.vue'))
+import { defineAsyncComponent, computed } from 'vue'
+import { useClientStore } from '@/stores/clientStore'
+import { storeToRefs } from 'pinia'
 
-// State variables
-const isModalOpen = ref(false)
-const showEditClientModal = ref(false)
-const selectedClient = ref(null)
-const clients = ref([
-  {
-    id: 1,
-    firstName: 'Neil',
-    lastName: 'Vallecer',
-    address: '123 Business Ave, Suite 100',
-    company: 'Tech Corp',
-    email: 'neil.vallecer@gmail.com',
-    phone: '+1 (555) 123-4567',
-    profilePicture: '/src/assets/tifa lockhart.jpg',
-  },
-  // Add more client data here
-])
+// Lazy load modals for better initial load performance
+const AddClientModal = defineAsyncComponent(() => 
+  import('../UserSideModals/AddClientModal.vue')
+)
+const EditClientModal = defineAsyncComponent(() => 
+  import('../UserSideModals/EditClientModal.vue')
+)
 
-// Open Add Client Modal
-const openModal = () => {
-  isModalOpen.value = true
+// Initialize store
+const store = useClientStore()
+
+// Destructure only what we need from the store
+const { 
+  searchQuery,
+  filteredClients,
+  currentPage,
+  isModalOpen,
+  showEditClientModal,
+  selectedClient 
+} = storeToRefs(store)
+
+// Computed properties from store getters
+const hasClients = computed(() => filteredClients.value.length > 0)
+const displayedClients = computed(() => store.paginatedClients)
+const totalPages = computed(() => store.totalPages)
+const availablePages = computed(() => store.pageNumbers)
+
+// Action handlers
+const handleSearch = (event) => {
+  store.setSearchQuery(event.target.value)
 }
 
-// Close Add Client Modal
-const closeModal = () => {
-  isModalOpen.value = false
-}
-
-// Open Edit Client Modal
-const editClient = (client) => {
-  selectedClient.value = client
-  showEditClientModal.value = true
-}
-
-// Close Edit Client Modal
-const closeEditModal = () => {
-  showEditClientModal.value = false
-}
-
-// Save changes made to the client
-const saveClientChanges = (updatedClient) => {
-  const index = clients.value.findIndex((c) => c.id === updatedClient.id)
-  if (index !== -1) {
-    clients.value[index] = { ...updatedClient }
+const handleAddClient = async (clientData) => {
+  try {
+    await store.addClient(clientData)
+    store.closeModal()
+  } catch (error) {
+    console.error('Failed to add client:', error)
   }
-  closeEditModal()
 }
 
-// Pagination variables
-const currentPage = ref(1)
-const clientsPerPage = 5
-
-// Computed properties
-const totalPages = computed(() => Math.ceil(clients.value.length / clientsPerPage))
-const paginatedClients = computed(() => {
-  const start = (currentPage.value - 1) * clientsPerPage
-  const end = start + clientsPerPage
-  return clients.value.slice(start, end)
-})
-const pageNumbers = computed(() => {
-  const pages = []
-  for (let i = 1; i <= totalPages.value; i++) {
-    pages.push(i)
+const handleEditClient = async (clientData) => {
+  try {
+    await store.updateClient(clientData)
+    store.closeEditModal()
+  } catch (error) {
+    console.error('Failed to update client:', error)
   }
-  return pages
-})
+}
 
-const changePage = (page) => {
-  if (page > 0 && page <= totalPages.value) {
-    currentPage.value = page
+const handleDeleteClient = async (clientId) => {
+  try {
+    if (confirm('Are you sure you want to delete this client?')) {
+      await store.deleteClient(clientId)
+    }
+  } catch (error) {
+    console.error('Failed to delete client:', error)
   }
+}
+
+// Navigation handlers
+const handlePageChange = (page) => {
+  if (page >= 1 && page <= totalPages.value) {
+    store.changePage(page)
+  }
+}
+
+const goToNextPage = () => {
+  handlePageChange(currentPage.value + 1)
+}
+
+const goToPreviousPage = () => {
+  handlePageChange(currentPage.value - 1)
 }
 </script>
 
 <template>
   <div class="clients-section">
+    <!-- Header Section -->
     <div class="section-top">
-      <h2 class="section-title">Clients List</h2>
-      <button class="add-button" @click="openModal">
+      <div class="section-header">
+        <h2 class="section-title">Clients List</h2>
+        <div class="search-container">
+          <input 
+            type="text" 
+            :value="searchQuery"
+            @input="handleSearch"
+            placeholder="Search clients..."
+            class="search-input"
+          />
+        </div>
+      </div>
+      <button class="add-button" @click="store.openModal">
         <span class="plus-icon">+</span>
         Add Client
       </button>
     </div>
 
-    <AddClientModal :isModalOpen="isModalOpen" @close="closeModal" />
+    <!-- Modals -->
+    <AddClientModal 
+      :isModalOpen="isModalOpen" 
+      @close="store.closeModal"
+      @add-client="handleAddClient"
+    />
 
-    <!-- Edit Client Modal -->
     <EditClientModal
       v-if="showEditClientModal"
       :clientData="selectedClient"
-      @close="closeEditModal"
-      @save="saveClientChanges"
+      @close="store.closeEditModal"
+      @save="handleEditClient"
     />
 
+    <!-- Table Section -->
     <div class="table-container">
-      <table class="clients-table">
+      <table class="clients-table" v-if="hasClients">
         <thead>
           <tr>
             <th>Profile</th>
@@ -112,46 +131,80 @@ const changePage = (page) => {
           </tr>
         </thead>
         <tbody>
-      <tr v-for="client in paginatedClients" :key="client.id">
-        <td>
-      <div class="profile-pic">
-        <img :src="client.profilePicture || '/default-avatar.png'" alt="Profile Picture" />
-      </div>
-      </td>
-      <td>{{ client.firstName }}</td>
-      <td>{{ client.lastName }}</td>
-      <td>{{ client.address }}</td>
-      <td>{{ client.company }}</td>
-      <td>{{ client.email }}</td>
-      <td>{{ client.phone }}</td>
-      <td class="actions">
-        <button class="edit-btn" @click="editClient(client)">Edit</button>
-        <button class="delete-btn">Delete</button>
-      </td>
-      </tr>
-    </tbody>
+          <tr v-for="client in displayedClients" :key="client.id">
+            <td>
+              <div class="profile-pic">
+                <img 
+                  :src="client.profilePicture"
+                  :alt="`${client.firstName} ${client.lastName}`"
+                  loading="lazy"
+                />
+              </div>
+            </td>
+            <td>{{ client.firstName }}</td>
+            <td>{{ client.lastName }}</td>
+            <td>{{ client.address }}</td>
+            <td>{{ client.company }}</td>
+            <td>{{ client.email }}</td>
+            <td>{{ client.phone }}</td>
+            <td class="actions">
+              <button 
+                class="edit-btn" 
+                @click="store.editClient(client)"
+                :title="`Edit ${client.firstName} ${client.lastName}`"
+              >
+                Edit
+              </button>
+              <button 
+                class="delete-btn" 
+                @click="handleDeleteClient(client.id)"
+                :title="`Delete ${client.firstName} ${client.lastName}`"
+              >
+                Delete
+              </button>
+            </td>
+          </tr>
+        </tbody>
       </table>
-      <div class="pagination">
-  <button class="page-btn" @click="changePage(currentPage - 1)" :disabled="currentPage === 1">
-    Previous
-  </button>
-  <button
-    v-for="page in pageNumbers"
-    :key="page"
-    class="page-btn"
-    :class="{ active: page === currentPage }"
-    @click="changePage(page)"
-  >
-    {{ page }}
-  </button>
-  <button
-    class="page-btn"
-    @click="changePage(currentPage + 1)"
-    :disabled="currentPage === totalPages"
-  >
-    Next
-  </button>
-</div>
+      
+      <!-- No Results Message -->
+      <div v-else class="no-results">
+        <div class="no-results-content">
+          <i class="fas fa-search no-results-icon"></i>
+          <h3>No Clients Found</h3>
+          <p>No clients match your search criteria. Try adjusting your search terms.</p>
+        </div>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination" v-if="hasClients">
+        <button 
+          class="page-btn" 
+          @click="goToPreviousPage" 
+          :disabled="currentPage === 1"
+          title="Previous page"
+        >
+          Previous
+        </button>
+        <button
+          v-for="page in availablePages"
+          :key="page"
+          class="page-btn"
+          :class="{ active: page === currentPage }"
+          @click="handlePageChange(page)"
+          :title="'Go to page ' + page"
+        >
+          {{ page }}
+        </button>
+        <button
+          class="page-btn"
+          @click="goToNextPage"
+          :disabled="currentPage === totalPages"
+          title="Next page"
+        >
+          Next
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -174,6 +227,11 @@ const changePage = (page) => {
   padding: 2rem;
   background: linear-gradient(to right, #ffffff, #f8fafc);
   border-bottom: 1px solid rgba(229, 231, 235, 0.5);
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
 }
 
 .section-title {
@@ -372,5 +430,57 @@ const changePage = (page) => {
   .table-container {
     margin: 0;
   }
+}
+
+.search-container {
+  margin-left: 2rem;
+}
+
+.search-input {
+  padding: 0.5rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  width: 250px;
+  transition: all 0.3s ease;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+}
+
+.no-results {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+  background-color: white;
+  border-radius: 8px;
+  margin: 2rem 0;
+}
+
+.no-results-content {
+  text-align: center;
+  color: #64748b;
+}
+
+.no-results-icon {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  color: #94a3b8;
+}
+
+.no-results-content h3 {
+  font-size: 1.25rem;
+  color: #334155;
+  margin-bottom: 0.5rem;
+}
+
+.no-results-content p {
+  font-size: 0.95rem;
+  max-width: 300px;
+  margin: 0 auto;
 }
 </style>
