@@ -1,5 +1,5 @@
 <script setup>
-import { defineAsyncComponent, ref } from 'vue'
+import { defineAsyncComponent, ref, onMounted, onUnmounted } from 'vue'
 const HomeDashboard = defineAsyncComponent(() => import('../components/UserComponents/HomeDashboard.vue'))
 const Clients = defineAsyncComponent(() => import('../components/UserComponents/ClientsList.vue'))
 const Sales = defineAsyncComponent(() => import('../components/UserComponents/SalesTracking.vue'))
@@ -32,6 +32,22 @@ const currentView = ref('Dashboard')
 const isProfileModalVisible = ref(false)
 
 const setView = (view) => currentView.value = view
+
+const closeOnClickOutside = (e) => {
+  const sidebar = document.querySelector('.sidebar')
+  const menuButton = document.querySelector('.menu-button')
+  if (isSidebarOpen.value && sidebar && !sidebar.contains(e.target) && !menuButton.contains(e.target)) {
+    isSidebarOpen.value = false
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', closeOnClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', closeOnClickOutside)
+})
 </script>
 
 <template>
@@ -39,7 +55,7 @@ const setView = (view) => currentView.value = view
     <!-- Header -->
     <header class="header">
       <div class="header-left">
-        <div class="icon" @click="isSidebarOpen = !isSidebarOpen">
+        <div class="icon menu-button" @click="isSidebarOpen = !isSidebarOpen">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
@@ -87,29 +103,29 @@ const setView = (view) => currentView.value = view
       <nav class="nav-menu">
         <a href="#" class="nav-item" @click="setView('Dashboard')">
           <font-awesome-icon :icon="['fas', 'chart-simple']" class="nav-icon" />
-          Dashboard
+          <span class="nav-text">Dashboard</span>
         </a>
         <a href="#" class="nav-item" @click="setView('Clients')">
           <font-awesome-icon :icon="['fas', 'person']" class="nav-icon" />
-          Clients
+          <span class="nav-text">Clients</span>
         </a>
         <a href="#" class="nav-item" @click="setView('Sales')">
           <font-awesome-icon :icon="['fas', 'suitcase']" class="nav-icon" />
-          Sales
+          <span class="nav-text">Sales</span>
         </a>
         <a href="#" class="nav-item" @click="setView('Reports')">
           <font-awesome-icon :icon="['fas', 'square-poll-horizontal']" class="nav-icon" />
-          Reports
+          <span class="nav-text">Reports</span>
         </a>
         <a href="#" class="nav-item" @click="setView('Products')">
           <font-awesome-icon :icon="['fas', 'boxes-stacked']" class="nav-icon" />
-          Products
+          <span class="nav-text">Products</span>
         </a>
       </nav>
       <div class="logout-container">
         <a href="#" class="nav-item logout-button">
           <font-awesome-icon :icon="['fas', 'sign-out-alt']" class="nav-icon" />
-          Logout
+          <span class="nav-text">Logout</span>
         </a>
       </div>
     </aside>
@@ -159,7 +175,7 @@ h1 {
 
 .section-title {
   font-size: 1.25rem;
-  font-weight: 500;
+  font-weight: 600;
   color: rgb(30, 41, 59);
 }
 
@@ -181,13 +197,14 @@ h1 {
   top: 64px;
   left: 0;
   bottom: 0;
-  width: 250px;
+  width: 280px;
   background: white;
   box-shadow: 1px 0 3px rgba(0, 0, 0, 0.1);
   transform: translateX(-100%);
-  transition: transform 0.3s ease;
+  transition: all 0.3s ease;
   display: flex;
   flex-direction: column;
+  z-index: 50;
 }
 
 .sidebar-open {
@@ -202,19 +219,53 @@ h1 {
 .nav-item {
   display: flex;
   align-items: center;
-  padding: 0.75rem 1.5rem;
+  padding: 1rem 1.75rem;
   color: rgb(30, 41, 59);
   text-decoration: none;
-  transition: background-color 0.2s;
-  gap: 0.75rem;
+  transition: all 0.3s ease;
+  gap: 1rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.nav-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 4px;
+  background-color: #2563eb;
+  transform: scaleY(0);
+  transition: transform 0.3s ease;
 }
 
 .nav-item:hover {
-  background-color: rgb(248, 250, 252);
+  background-color: #f8fafc;
+  color: #2563eb;
+}
+
+.nav-item:hover::before {
+  transform: scaleY(1);
 }
 
 .nav-icon {
   font-size: 1.25rem;
+  min-width: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s ease;
+}
+
+.nav-item:hover .nav-icon {
+  transform: scale(1.1);
+}
+
+.nav-text {
+  font-weight: 500;
+  font-size: 0.9375rem;
+  letter-spacing: 0.01em;
 }
 
 .logout-container {
@@ -228,6 +279,10 @@ h1 {
 
 .logout-button:hover {
   background-color: #fee2e2;
+}
+
+.logout-button:hover::before {
+  background-color: #ef4444;
 }
 
 .main-content {
