@@ -1,52 +1,33 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '../stores/authStore'
 
-const router = useRouter();
+const router = useRouter()
+const authStore = useAuthStore()
 
-const username = ref('')
+const email = ref('')
 const password = ref('')
 const showPassword = ref(false)
+const errorMessage = ref('')
 
-const handleLogin = () => {
-  const account = mockAccounts.find(
-    (acc) => acc.username === username.value && acc.password === password.value
-  );
-
-  if (account) {
-    console.log('Login successful:', account);
-    // Navigate to /home and pass user data as state
-    localStorage.setItem('isAuthenticated', true);
-    router.push({
-      path: '/home',
-      state: { user: account },
-    });
-  } else {
-    alert('Invalid username or password');
+const handleLogin = async () => {
+  try {
+    const result = await authStore.login(email.value, password.value)
+    if (result.success) {
+      if (authStore.isAdmin) {
+        router.push('/admin')
+      } else {
+        router.push('/home')
+      }
+    } else {
+      errorMessage.value = 'Invalid credentials'
+    }
+  } catch (error) {
+    errorMessage.value = 'An error occurred during login'
+    console.error('Login error:', error)
   }
-};
-
-//Mock user accounts
-const mockAccounts = [
-  {
-    username: 'john_doe',
-    password: '123456',
-    firstName: 'John',
-    lastName: 'Doe',
-    position: 'Sales Manager',
-    email: 'john.doe@example.com',
-    phone: '123-456-7890',
-  },
-  {
-    username: 'jane_smith',
-    password: 'password123',
-    firstName: 'Jane',
-    lastName: 'Smith',
-    position: 'Client Manager',
-    email: 'jane.smith@example.com',
-    phone: '987-654-3210',
-  },
-];
+}
 </script>
 
 <template>
@@ -77,12 +58,12 @@ const mockAccounts = [
           <h1>Login</h1>
           <form @submit.prevent="handleLogin">
             <div class="form-group">
-              <label for="username">Username</label>
+              <label for="email">Email</label>
               <input
-                type="text"
-                id="username"
-                v-model="username"
-                placeholder="Enter your username"
+                type="email"
+                id="email"
+                v-model="email"
+                placeholder="Enter your email"
                 required
               >
             </div>
@@ -100,16 +81,20 @@ const mockAccounts = [
                 <button
                   type="button"
                   class="toggle-password"
-                  @click="showPassword= !showPassword"
+                  @click="showPassword = !showPassword"
                 >
-                  {{ showPassword ? '👁️' : '👁️‍🗨️' }}
+                  {{ showPassword ? 'Hide' : 'Show' }}
                 </button>
               </div>
             </div>
 
-            <a href="#forgot-password" class="forgot-password">Forgot Password?</a>
+            <div v-if="errorMessage" class="error-message">
+              {{ errorMessage }}
+            </div>
 
-            <button type="submit" class="login-button">Login</button>
+            <button type="submit" class="login-button">
+              Login
+            </button>
           </form>
         </div>
       </div>
@@ -253,17 +238,10 @@ input:focus {
   padding: 0.25rem;
 }
 
-.forgot-password {
-  display: block;
-  text-align: right;
-  color: #2563eb;
-  text-decoration: none;
+.error-message {
+  color: #dc2626;
   font-size: 0.875rem;
   margin-bottom: 1.5rem;
-}
-
-.forgot-password:hover {
-  text-decoration: underline;
 }
 
 .login-button {
