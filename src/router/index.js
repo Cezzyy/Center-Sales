@@ -37,10 +37,22 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
+  
+  // Check authentication status on first navigation
+  if (!authStore.isAuthenticated) {
+    await authStore.checkAuth()
+  }
+
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
   const requiresAdmin = to.matched.some(record => record.meta.requiresAdmin)
+
+  // Redirect to appropriate page if already logged in and trying to access login page
+  if (to.name === 'login' && authStore.isAuthenticated) {
+    next(authStore.isAdmin ? { name: 'admin' } : { name: 'home' })
+    return
+  }
 
   if (requiresAuth && !authStore.isAuthenticated) {
     next({ name: 'login' })

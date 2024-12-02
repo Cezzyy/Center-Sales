@@ -37,11 +37,16 @@ const mockUsers = [
 ]
 
 export const useAuthStore = defineStore('auth', {
-  state: () => ({
-    user: null,
-    isAuthenticated: false,
-    token: null
-  }),
+  state: () => {
+    const token = localStorage.getItem('auth_token')
+    const storedUser = localStorage.getItem('user')
+    
+    return {
+      user: storedUser ? JSON.parse(storedUser) : null,
+      isAuthenticated: !!token && !!storedUser,
+      token: token || null
+    }
+  },
 
   getters: {
     isAdmin: (state) => state.user?.role === 'admin',
@@ -99,12 +104,19 @@ export const useAuthStore = defineStore('auth', {
       if (token && storedUser) {
         try {
           const user = JSON.parse(storedUser)
+          
+          // Validate token format (in a real app, you'd verify with backend)
+          const [email, role, timestamp] = atob(token).split(':')
+          if (!email || !role || !timestamp) {
+            throw new Error('Invalid token format')
+          }
+          
           this.user = user
           this.isAuthenticated = true
           this.token = token
           return true
         } catch (error) {
-          console.error('Error parsing stored user:', error)
+          console.error('Error checking auth:', error)
           this.logout()
           return false
         }
