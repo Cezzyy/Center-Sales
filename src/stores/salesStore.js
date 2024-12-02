@@ -199,30 +199,48 @@ export const useOrderInvoiceStore = defineStore('orderInvoice', {
   actions: {
     // Modal Handlers
     openModal(modalName) {
-      this[modalName] = true;
+      this[`is${modalName}ModalOpen`] = true;
     },
     closeModal(modalName) {
-      this[modalName] = false;
+      this[`is${modalName}ModalOpen`] = false;
     },
 
     // Handle submission from modals
     handleEditOrderSubmit(updatedOrder) {
       const index = this.orders.findIndex(order => order.orderId === updatedOrder.orderId);
       if (index !== -1) {
-        this.orders[index] = { ...updatedOrder };
+        this.orders[index] = { ...this.orders[index], ...updatedOrder };
       }
-      this.closeModal('isEditOrderModalOpen');
+      this.closeModal('EditOrder');
     },
-    handleAddInvoiceSubmit(updatedInvoice) {
-      const index = this.invoices.findIndex(inv => inv.invoiceId === updatedInvoice.invoiceId);
+
+    handleEditInvoiceSubmit(updatedInvoice) {
+      const index = this.invoices.findIndex(invoice => invoice.invoiceId === updatedInvoice.invoiceId);
       if (index !== -1) {
-        this.invoices[index] = { ...updatedInvoice };
+        this.invoices[index] = { ...this.invoices[index], ...updatedInvoice };
       }
-      this.closeModal('isEditInvoiceModalOpen');
+      this.closeModal('EditInvoice');
     },
+
+    handleAddInvoiceSubmit(updatedInvoice) {
+      this.invoices.push(updatedInvoice);
+      this.closeModal('AddInvoice');
+    },
+
     handleAddSalesSubmit(salesData) {
-      console.log('Sales Data Submitted:', salesData);
-      this.closeModal('isAddSalesModalOpen');
+      this.orders.push(salesData);
+      this.closeModal('AddSales');
+    },
+
+    markInvoiceAsPaid(invoiceId) {
+      const index = this.invoices.findIndex(invoice => invoice.invoiceId === invoiceId);
+      if (index !== -1) {
+        this.invoices[index] = { 
+          ...this.invoices[index], 
+          isPaid: true,
+          paidDate: new Date().toISOString().split('T')[0]
+        };
+      }
     },
 
     // Pagination Handlers
