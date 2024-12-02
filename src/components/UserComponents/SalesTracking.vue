@@ -1,261 +1,117 @@
 <script setup>
-import { ref, computed, defineAsyncComponent } from 'vue';
+import { defineAsyncComponent } from 'vue';
+import { useOrderInvoiceStore } from '@/stores/salesStore';
+import { storeToRefs } from 'pinia';
+
 const AddSalesModal = defineAsyncComponent(() => import('../UserSideModals/AddSalesModal.vue'));
 const AddInvoiceModal = defineAsyncComponent(() => import('../UserSideModals/AddInvoiceModal.vue'));
 const ViewOrderModal = defineAsyncComponent(() => import('../UserSideModals/ViewOrderModal.vue'));
 const EditOrderModal = defineAsyncComponent(() => import('../UserSideModals/EditOrderModal.vue'));
 const EditInvoiceModal = defineAsyncComponent(() => import('../UserSideModals/EditInvoiceModal.vue'));
-// State for modal visibility
-const isAddSalesModalOpen = ref(false);
-const isAddInvoiceModalOpen = ref(false);
-const isViewOrderModalOpen = ref(false);
-const isEditOrderModalOpen = ref(false);
-const isEditInvoiceModalOpen = ref(false);
 
-const viewOrder = ref({
-  orderId: '',
-  customerName: '',
-  productName: '',
-  quantity: 0,
-  salesRepresentative: '',
-  amount: 0,
-  status: '',
-});
+// Initialize store
+const store = useOrderInvoiceStore();
 
-const editOrder = ref({
-  orderId: '',
-  customerName: '',
-  productName: '',
-  quantity: 0,
-  salesRepresentative: '',
-  amount: 0,
-  status: '',
-});
+// Destructure state and getters with storeToRefs for reactivity
+const {
+  isAddSalesModalOpen,
+  isAddInvoiceModalOpen,
+  isViewOrderModalOpen,
+  isEditOrderModalOpen,
+  isEditInvoiceModalOpen,
+  viewOrder,
+  editOrder,
+  editInvoice,
+  orderFilters,
+  invoiceFilters,
+  currentPageOrders,
+  currentPageInvoices,
+  paginatedOrders,
+  paginatedInvoices,
+  totalOrderPages,
+  totalInvoicePages,
+} = storeToRefs(store);
 
-const editInvoice = ref({
-  invoiceId: '',
-  customerName: '',
-  amount: 0,
-  dueDate: '',
-});
+// Destructure getters with storeToRefs
+const {
+} = storeToRefs(store);
 
-// Open and close modal functions
-const openAddSalesModal = () => {
-  isAddSalesModalOpen.value = true;
+// Add computed property for formatted dates
+const formatDate = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
 };
 
-const closeAddSalesModal = () => {
-  isAddSalesModalOpen.value = false;
+// Calculate days overdue
+const calculateDaysOverdue = (dueDate) => {
+  if (!dueDate) return 0;
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Reset time part for accurate day calculation
+  
+  const due = new Date(dueDate);
+  due.setHours(0, 0, 0, 0);
+  
+  const diffTime = today - due;
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  return diffDays > 0 ? diffDays : 0; // Only return positive values
 };
 
-const openAddInvoiceModal = () => {
-  isAddInvoiceModalOpen.value = true;
-};
-
-const closeAddInvoiceModal = () => {
-  isAddInvoiceModalOpen.value = false;
-};
-
+// Modal handlers
+const openAddSalesModal = () => store.openModal('AddSales');
+const closeAddSalesModal = () => store.closeModal('AddSales');
+const openAddInvoiceModal = () => store.openModal('AddInvoice');
+const closeAddInvoiceModal = () => store.closeModal('AddInvoice');
 const openViewOrderModal = (order) => {
-  isViewOrderModalOpen.value = true;
   viewOrder.value = order;
+  store.openModal('ViewOrder');
 };
-
-const closeViewOrderModal = () => {
-  isViewOrderModalOpen.value = false;
-};
-
+const closeViewOrderModal = () => store.closeModal('ViewOrder');
 const openEditOrderModal = (order) => {
-  isEditOrderModalOpen.value = true;
   editOrder.value = { ...order };
+  store.openModal('EditOrder');
 };
-
-const closeEditOrderModal = () => {
-  isEditOrderModalOpen.value = false;
-};
-
+const closeEditOrderModal = () => store.closeModal('EditOrder');
 const openEditInvoiceModal = (invoice) => {
-  isEditInvoiceModalOpen.value = true;
   editInvoice.value = { ...invoice };
+  store.openModal('EditInvoice');
 };
+const closeEditInvoiceModal = () => store.closeModal('EditInvoice');
 
-// Handle form submission from modal
+// Form submission handlers
 const handleEditOrderSubmit = (updatedOrder) => {
-  // Find the index of the order to update
-  const index = orders.value.findIndex((order) => order.orderId === updatedOrder.orderId);
-  if (index !== -1) {
-    // Update the order in the table
-    orders.value[index] = { ...updatedOrder };
-  }
-  closeEditOrderModal();
+  store.handleEditOrderSubmit(updatedOrder);
 };
 
 const handleAddInvoiceSubmit = (updatedInvoice) => {
-    const index = invoices.value.findIndex(inv => inv.invoiceId === updatedInvoice.invoiceId);
-    if (index !== -1) {
-        invoices.value[index] = { ...updatedInvoice }; // Update the invoice
-    }
-    isEditInvoiceModalOpen.value = false;
+  store.handleAddInvoiceSubmit(updatedInvoice);
 };
-
 
 const handleAddSalesSubmit = (salesData) => {
-  console.log('Sales Data Submitted:', salesData);
-  // Add logic to handle the submitted sales data
-  closeAddSalesModal();
+  store.handleAddSalesSubmit(salesData);
 };
 
-const handleEditInvoiceSubmit = (invoiceData) => {
-  console.log('Invoice Data Submitted:', invoiceData);
-  closeAddInvoiceModal();
-};
+// Pagination handlers
+const goToPageOrders = (page) => store.goToPage('orders', page);
+const goToPreviousPageOrders = () => store.goToPreviousPage('orders');
+const goToNextPageOrders = () => store.goToNextPage('orders');
+const goToPageInvoices = (page) => store.goToPage('invoices', page);
+const goToPreviousPageInvoices = () => store.goToPreviousPage('invoices');
+const goToNextPageInvoices = () => store.goToNextPage('invoices');
 
-// Sample data for Orders
-const orders = ref([
-  { orderId: "ORD-001", customerName: "John Doe", productName: "Product A", amount: 1500, status: "pending", quantity: 10, salesRepresentative: "Neil Vallecer", date: "2024-01-01" },
-  { orderId: "ORD-002", customerName: "Jane Smith", productName: "Product B", amount: 1200, status: "completed", quantity: 5, salesRepresentative: "Neil Vallecer", date: "2024-01-02" },
-  // Add more orders...
-]);
+// Filter reset handlers
+const resetOrderFilters = () => store.resetFilters('orders');
+const resetInvoiceFilters = () => store.resetFilters('invoices');
 
-// Sample data for Invoices
-const invoices = ref([
-  { invoiceId: "INV-001", customer: "John Doe", amount: 1500, dueDate: "2024-02-01", daysOverdue: 15 },
-  { invoiceId: "INV-002", customer: "Jane Smith", amount: 1200, dueDate: "2024-02-10", daysOverdue: 0 },
-  // Add more sample invoices...
-]);
-
-// Pagination state
-const currentPageOrders = ref(1);
-const currentPageInvoices = ref(1);
-const itemsPerPage = 10;
-
-// Filter state for Orders
-const orderFilters = ref({
-  dateFrom: "",
-  dateTo: "",
-  orderId: "",
-  customerName: "",
-  productName: "",
-  status: "",
-});
-
-// Computed: Filtered Orders
-const filteredOrders = computed(() => {
-  return orders.value.filter((order) => {
-    const matchesOrderId =
-      !orderFilters.value.orderId || order.orderId.toLowerCase().includes(orderFilters.value.orderId.toLowerCase());
-
-    const matchesCustomer =
-      !orderFilters.value.customerName || order.customerName.toLowerCase().includes(orderFilters.value.customerName.toLowerCase());
-
-    const matchesProduct =
-      !orderFilters.value.productName || order.productName.toLowerCase().includes(orderFilters.value.productName.toLowerCase());
-
-    const matchesStatus = !orderFilters.value.status || order.status === orderFilters.value.status;
-
-    const matchesDateRange =
-      (!orderFilters.value.dateFrom || !orderFilters.value.dateTo) ||
-      (order.date >= orderFilters.value.dateFrom && order.date <= orderFilters.value.dateTo);
-
-    return matchesOrderId && matchesCustomer && matchesProduct && matchesStatus && matchesDateRange;
-  });
-});
-
-// Computed: Paginated Orders
-const paginatedOrders = computed(() => {
-  const startIndex = (currentPageOrders.value - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  return filteredOrders.value.slice(startIndex, endIndex);
-});
-
-// Computed: Total pages for Orders
-const totalOrderPages = computed(() => Math.ceil(filteredOrders.value.length / itemsPerPage));
-
-// Filter state for Invoices
-const invoiceFilters = ref({
-  invoiceId: "",
-  customer: "",
-});
-
-// Computed: Filtered Invoices
-const filteredInvoices = computed(() => {
-  return invoices.value.filter((invoice) => {
-    const matchesInvoiceId =
-      !invoiceFilters.value.invoiceId || invoice.invoiceId.toLowerCase().includes(invoiceFilters.value.invoiceId.toLowerCase());
-
-    const matchesCustomer =
-      !invoiceFilters.value.customer || invoice.customer.toLowerCase().includes(invoiceFilters.value.customer.toLowerCase());
-
-    return matchesInvoiceId && matchesCustomer;
-  });
-});
-
-// Computed: Paginated Invoices
-const paginatedInvoices = computed(() => {
-  const startIndex = (currentPageInvoices.value - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  return filteredInvoices.value.slice(startIndex, endIndex);
-});
-
-// Computed: Total pages for Invoices
-const totalInvoicePages = computed(() => Math.ceil(filteredInvoices.value.length / itemsPerPage));
-
-// Pagination methods for Orders
-const goToPageOrders = (page) => {
-  if (page >= 1 && page <= totalOrderPages.value) {
-    currentPageOrders.value = page;
-  }
-};
-
-const goToPreviousPageOrders = () => {
-  if (currentPageOrders.value > 1) {
-    currentPageOrders.value--;
-  }
-};
-
-const goToNextPageOrders = () => {
-  if (currentPageOrders.value < totalOrderPages.value) {
-    currentPageOrders.value++;
-  }
-};
-
-// Pagination methods for Invoices
-const goToPageInvoices = (page) => {
-  if (page >= 1 && page <= totalInvoicePages.value) {
-    currentPageInvoices.value = page;
-  }
-};
-
-const goToPreviousPageInvoices = () => {
-  if (currentPageInvoices.value > 1) {
-    currentPageInvoices.value--;
-  }
-};
-
-const goToNextPageInvoices = () => {
-  if (currentPageInvoices.value < totalInvoicePages.value) {
-    currentPageInvoices.value++;
-  }
-};
-
-// Reset Filters for Orders
-const resetOrderFilters = () => {
-  orderFilters.value = {
-    dateFrom: "",
-    dateTo: "",
-    orderId: "",
-    customerName: "",
-    productName: "",
-    status: "",
-  };
-};
-
-// Reset Filters for Invoices
-const resetInvoiceFilters = () => {
-  invoiceFilters.value = {
-    invoiceId: "",
-    customer: "",
-  };
+// Mark invoice as paid
+const markAsPaid = (invoiceId) => {
+  store.markInvoiceAsPaid(invoiceId);
 };
 </script>
 
@@ -265,45 +121,66 @@ const resetInvoiceFilters = () => {
     <section class="section order-tracking">
       <div class="section-header">
         <h2>Order Tracking</h2>
-        <button class="btn-add" @click="openAddSalesModal">+ Add Sales Order</button>
-        <AddSalesModal
-      v-model="isAddSalesModalOpen"
-      :productPrice="50"
-      @submit="handleAddSalesSubmit"
-      />
+        <button class="btn-add" @click="openAddSalesModal">+ Add Order</button>
       </div>
 
-
-      <!-- Filter Section for Orders -->
+      <!-- Filters -->
       <div class="filter-section">
         <div class="filter-group">
-          <label>Date Range</label>
-          <input type="date" class="filter-input" v-model="orderFilters.dateFrom" placeholder="From" />
-          <input type="date" class="filter-input" v-model="orderFilters.dateTo" placeholder="To" />
+          <label>Date From:</label>
+          <input
+            type="date"
+            v-model="orderFilters.dateFrom"
+            class="filter-input"
+          />
         </div>
         <div class="filter-group">
-          <label>Order ID</label>
-          <input type="text" class="filter-input" v-model="orderFilters.orderId" placeholder="Search Order ID..." />
+          <label>Date To:</label>
+          <input
+            type="date"
+            v-model="orderFilters.dateTo"
+            class="filter-input"
+          />
         </div>
         <div class="filter-group">
-          <label>Customer Name</label>
-          <input type="text" class="filter-input" v-model="orderFilters.customerName" placeholder="Search Customer..." />
+          <label>Order ID:</label>
+          <input
+            type="text"
+            v-model="orderFilters.orderId"
+            placeholder="Search by Order ID"
+            class="filter-input"
+          />
         </div>
         <div class="filter-group">
-          <label>Product Name</label>
-          <input type="text" class="filter-input" v-model="orderFilters.productName" placeholder="Search Product..." />
+          <label>Customer:</label>
+          <input
+            type="text"
+            v-model="orderFilters.customerName"
+            placeholder="Search by Customer"
+            class="filter-input"
+          />
         </div>
         <div class="filter-group">
-          <label>Status</label>
-          <select class="filter-input" v-model="orderFilters.status">
-            <option value="">All Status</option>
+          <label>Product:</label>
+          <input
+            type="text"
+            v-model="orderFilters.productName"
+            placeholder="Search by Product"
+            class="filter-input"
+          />
+        </div>
+        <div class="filter-group">
+          <label>Status:</label>
+          <select v-model="orderFilters.status" class="filter-input">
+            <option value="">All</option>
             <option value="pending">Pending</option>
-            <option value="processing">Processing</option>
             <option value="completed">Completed</option>
             <option value="cancelled">Cancelled</option>
           </select>
         </div>
-        <button class="btn-reset" @click="resetOrderFilters">Reset Filters</button>
+        <button class="btn-reset" @click="resetOrderFilters">
+          Reset Filters
+        </button>
       </div>
 
       <!-- Orders Table -->
@@ -312,55 +189,84 @@ const resetInvoiceFilters = () => {
           <thead>
             <tr>
               <th>Order ID</th>
-              <th>Customer Name</th>
-              <th>Product Name</th>
+              <th>Date</th>
+              <th>Customer</th>
+              <th>Product</th>
+              <th>Quantity</th>
               <th>Amount</th>
               <th>Status</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="order in paginatedOrders" :key="order.orderId">
-              <td>{{ order.orderId }}</td>
-              <td>{{ order.customerName }}</td>
-              <td>{{ order.productName }}</td>
-              <td>${{ order.amount.toFixed(2) }}</td>
-              <td><span :class="'status-badge ' + order.status">{{ order.status }}</span></td>
-              <td class="action-buttons">
-                <button class="btn-action btn-edit" @click="openEditOrderModal(order)">✎ Edit</button>
-                <button class="btn-action btn-view" @click="openViewOrderModal(order)">👁 View</button>
+            <template v-if="paginatedOrders.length">
+              <tr v-for="order in paginatedOrders" :key="order.orderId">
+                <td class="order-id">{{ order.orderId }}</td>
+                <td class="date-cell">{{ order.date }}</td>
+                <td>{{ order.customerName }}</td>
+                <td>{{ order.productName }}</td>
+                <td>{{ order.quantity }}</td>
+                <td class="amount-cell">₱{{ order.amount.toLocaleString() }}</td>
+                <td>
+                  <span :class="['status-badge', order.status]">
+                    {{ order.status }}
+                  </span>
+                </td>
+                <td>
+                  <div class="action-buttons">
+                    <button
+                      class="btn-action btn-view"
+                      @click="openViewOrderModal(order)"
+                    >
+                      View
+                    </button>
+                    <button
+                      class="btn-action btn-edit"
+                      @click="openEditOrderModal(order)"
+                    >
+                      Edit
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </template>
+            <tr v-else class="no-data-row">
+              <td colspan="8" class="no-data-cell">
+                <div class="no-data-content">
+                  <i class="fas fa-search"></i>
+                  <p>No orders found</p>
+                </div>
               </td>
-            </tr>
-            <tr v-if="paginatedOrders.length === 0">
-              <td colspan="6">No orders found.</td>
             </tr>
           </tbody>
         </table>
-        <ViewOrderModal
-      v-model="isViewOrderModalOpen"
-      :order="viewOrder"
-      @update:modelValue="closeViewOrderModal"
-      />
-        <EditOrderModal
-      v-model="isEditOrderModalOpen"
-      :orderData="editOrder"
-      @submit="handleEditOrderSubmit"
-      />
+      </div>
 
-        <!-- Pagination for Orders -->
-        <div class="pagination">
-          <button class="btn-page" @click="goToPreviousPageOrders" :disabled="currentPageOrders === 1">Previous</button>
-          <button
-            class="btn-page"
-            v-for="page in totalOrderPages"
-            :key="page"
-            :class="{ active: currentPageOrders === page }"
-            @click="goToPageOrders(page)"
-          >
-            {{ page }}
-          </button>
-          <button class="btn-page" @click="goToNextPageOrders" :disabled="currentPageOrders === totalOrderPages">Next</button>
-        </div>
+      <!-- Orders Pagination -->
+      <div class="pagination">
+        <button
+          class="btn-page"
+          @click="goToPreviousPageOrders"
+          :disabled="currentPageOrders === 1"
+        >
+          Previous
+        </button>
+        <button
+          v-for="page in totalOrderPages"
+          :key="page"
+          class="btn-page"
+          :class="{ active: currentPageOrders === page }"
+          @click="goToPageOrders(page)"
+        >
+          {{ page }}
+        </button>
+        <button
+          class="btn-page"
+          @click="goToNextPageOrders"
+          :disabled="currentPageOrders === totalOrderPages"
+        >
+          Next
+        </button>
       </div>
     </section>
 
@@ -369,37 +275,34 @@ const resetInvoiceFilters = () => {
       <div class="section-header">
         <h2>Invoicing</h2>
         <button class="btn-add" @click="openAddInvoiceModal">+ Add Invoice</button>
-        <AddInvoiceModal
-      v-model="isAddInvoiceModalOpen"
-      :orders="orders"
-      @submit="handleAddInvoiceSubmit"
-      />
       </div>
 
-      <!-- Filter Section for Invoices -->
+      <!-- Invoice Filters -->
       <div class="filter-section">
         <div class="filter-group">
-          <label>Invoice ID</label>
+          <label>Invoice ID:</label>
           <input
             type="text"
-            class="filter-input"
             v-model="invoiceFilters.invoiceId"
-            placeholder="Search Invoice ID..."
+            placeholder="Search by Invoice ID"
+            class="filter-input"
           />
         </div>
         <div class="filter-group">
-          <label>Customer Name</label>
+          <label>Customer:</label>
           <input
             type="text"
-            class="filter-input"
             v-model="invoiceFilters.customer"
-            placeholder="Search Customer..."
+            placeholder="Search by Customer"
+            class="filter-input"
           />
         </div>
-        <button class="btn-reset" @click="resetInvoiceFilters">Reset Filters</button>
+        <button class="btn-reset" @click="resetInvoiceFilters">
+          Reset Filters
+        </button>
       </div>
 
-      <!-- Overdue Payments Table -->
+      <!-- Invoices Table -->
       <div class="table-container">
         <table class="data-table">
           <thead>
@@ -409,62 +312,123 @@ const resetInvoiceFilters = () => {
               <th>Amount</th>
               <th>Due Date</th>
               <th>Days Overdue</th>
+              <th>Status</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="invoice in paginatedInvoices" :key="invoice.invoiceId">
-              <td>{{ invoice.invoiceId }}</td>
-              <td>{{ invoice.customer }}</td>
-              <td>${{ invoice.amount.toFixed(2) }}</td>
-              <td>{{ invoice.dueDate }}</td>
-              <td :class="{ overdue: invoice.daysOverdue > 0 }">
-                {{ invoice.daysOverdue > 0 ? invoice.daysOverdue + ' days' : 'On Time' }}
+            <template v-if="paginatedInvoices.length">
+              <tr v-for="invoice in paginatedInvoices" 
+                  :key="invoice.invoiceId"
+                  :class="{ 'paid-row': invoice.isPaid }">
+                <td class="order-id">{{ invoice.invoiceId }}</td>
+                <td>{{ invoice.customer }}</td>
+                <td class="amount-cell">₱{{ invoice.amount.toLocaleString() }}</td>
+                <td class="date-cell">{{ formatDate(invoice.dueDate) }}</td>
+                <td :class="{ 'overdue': !invoice.isPaid && calculateDaysOverdue(invoice.dueDate) > 0 }">
+                  {{ invoice.isPaid 
+                    ? 'Paid' 
+                    : (calculateDaysOverdue(invoice.dueDate) > 0 
+                      ? `${calculateDaysOverdue(invoice.dueDate)} days overdue` 
+                      : 'Not overdue') 
+                  }}
+                </td>
+                <td>
+                  <span :class="['status-badge', invoice.isPaid ? 'status-paid' : 'status-pending']">
+                    {{ invoice.isPaid ? 'Paid' : 'Pending' }}
+                  </span>
+                </td>
+                <td>
+                  <div class="action-buttons">
+                    <button
+                      class="btn-action btn-edit"
+                      @click="openEditInvoiceModal(invoice)"
+                      :disabled="invoice.isPaid"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      v-if="!invoice.isPaid"
+                      class="btn-action btn-paid"
+                      @click="markAsPaid(invoice.invoiceId)"
+                    >
+                      Mark as Paid
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </template>
+            <tr v-else class="no-data-row">
+              <td colspan="7" class="no-data-cell">
+                <div class="no-data-content">
+                  <i class="fas fa-search"></i>
+                  <p>No invoices found</p>
+                </div>
               </td>
-              <td class="action-buttons">
-                <button class="btn-action btn-edit" @click="openEditInvoiceModal(invoice)">✎ Edit</button>
-                <button class="btn-action btn-paid">✓ Paid</button>
-              </td>
-            </tr>
-            <tr v-if="paginatedInvoices.length === 0">
-              <td colspan="6">No invoices found.</td>
             </tr>
           </tbody>
         </table>
-        <EditInvoiceModal
-      v-model="isEditInvoiceModalOpen"
-      :invoiceData="editInvoice"
-      @submit="handleEditInvoiceSubmit"
-      />
+      </div>
 
-        <!-- Pagination for Invoices -->
-        <div class="pagination">
-          <button
-            class="btn-page"
-            @click="goToPreviousPageInvoices"
-            :disabled="currentPageInvoices === 1"
-          >
-            Previous
-          </button>
-          <button
-            class="btn-page"
-            v-for="page in totalInvoicePages"
-            :key="page"
-            :class="{ active: currentPageInvoices === page }"
-            @click="goToPageInvoices(page)"
-          >
-            {{ page }}
-          </button>
-          <button
-            class="btn-page"
-            @click="goToNextPageInvoices"
-            :disabled="currentPageInvoices === totalInvoicePages"
-          >
-            Next
-          </button>
-        </div>
+      <!-- Invoices Pagination -->
+      <div class="pagination">
+        <button
+          class="btn-page"
+          @click="goToPreviousPageInvoices"
+          :disabled="currentPageInvoices === 1"
+        >
+          Previous
+        </button>
+        <button
+          v-for="page in totalInvoicePages"
+          :key="page"
+          class="btn-page"
+          :class="{ active: currentPageInvoices === page }"
+          @click="goToPageInvoices(page)"
+        >
+          {{ page }}
+        </button>
+        <button
+          class="btn-page"
+          @click="goToNextPageInvoices"
+          :disabled="currentPageInvoices === totalInvoicePages"
+        >
+          Next
+        </button>
       </div>
     </section>
+
+    <!-- Modals -->
+    <AddSalesModal
+      v-if="isAddSalesModalOpen"
+      v-model="isAddSalesModalOpen"
+      @submit="handleAddSalesSubmit"
+      @update:modelValue="closeAddSalesModal"
+    />
+    <AddInvoiceModal
+      v-if="isAddInvoiceModalOpen"
+      v-model="isAddInvoiceModalOpen"
+      :orders="paginatedOrders"
+      @submit="handleAddInvoiceSubmit"
+    />
+    <ViewOrderModal
+      v-if="isViewOrderModalOpen"
+      v-model="isViewOrderModalOpen"
+      :order="viewOrder"
+      @close="closeViewOrderModal"
+    />
+    <EditOrderModal
+      v-if="isEditOrderModalOpen"
+      v-model="isEditOrderModalOpen"
+      :order="editOrder"
+      @submit="handleEditOrderSubmit"
+    />
+    <EditInvoiceModal
+      v-if="isEditInvoiceModalOpen"
+      v-model="isEditInvoiceModalOpen"
+      :invoice="editInvoice"
+      @submit="handleEditInvoiceSubmit"
+    />
   </div>
 </template>
 
@@ -519,64 +483,61 @@ const resetInvoiceFilters = () => {
 .action-buttons {
   display: flex;
   gap: 0.5rem;
+  justify-content: flex-start;
 }
 
 .btn-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.35rem 0.75rem;
+  padding: 0.5rem 1rem;
   border: none;
-  border-radius: 4px;
+  border-radius: 0.375rem;
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
-  white-space: nowrap;
+  transition: all 0.2s;
 }
 
-.btn-action .btn-icon {
-  font-size: 1rem;
+.btn-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-.btn-action .btn-text {
-  display: inline-block;
-}
-
-/* Edit Button */
 .btn-edit {
-  background-color: #f8f9fa;
-  color: #2c3e50;
-  border: 1px solid #dee2e6;
+  background-color: #4f46e5;
+  color: white;
 }
 
-.btn-edit:hover {
-  background-color: #e9ecef;
-  border-color: #ced4da;
+.btn-edit:hover:not(:disabled) {
+  background-color: #4338ca;
 }
 
-/* View Button */
-.btn-view {
-  background-color: #e3f2fd;
-  color: #0d47a1;
-  border: 1px solid #bbdefb;
-}
-
-.btn-view:hover {
-  background-color: #bbdefb;
-  border-color: #90caf9;
-}
-
-/* Paid Button */
 .btn-paid {
-  background-color: #e8f5e9;
-  color: #2e7d32;
-  border: 1px solid #c8e6c9;
+  background-color: #059669;
+  color: white;
 }
 
 .btn-paid:hover {
-  background-color: #c8e6c9;
-  border-color: #a5d6a7;
+  background-color: #047857;
+}
+
+.paid-row {
+  background-color: #f0fdf4;
+}
+
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.status-pending {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.status-paid {
+  background-color: #d1fae5;
+  color: #065f46;
 }
 
 /* Filter Section */
@@ -633,47 +594,37 @@ const resetInvoiceFilters = () => {
 /* Table Styles */
 .table-container {
   overflow-x: auto;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: white;
+  margin: 1rem 0;
 }
 
 .data-table {
   width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 1rem;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.95rem;
 }
 
 .data-table th,
 .data-table td {
-  padding: 0.75rem;
+  padding: 1rem 1.5rem;
   text-align: left;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .data-table th {
-  background: #f8f9fa;
+  background: #f8fafc;
   font-weight: 600;
-  color: #2c3e50;
+  color: #1a202c;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
 }
 
-.data-table tr:hover {
-  background: #f8f9fa;
-}
-
-/* Status Badge */
-.status-badge {
-  padding: 0.25rem 0.75rem;
-  border-radius: 12px;
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.status-badge.pending {
-  background: #fff3cd;
-  color: #856404;
-}
-
-.overdue {
-  color: #dc3545;
-  font-weight: 500;
+.data-table tbody tr:hover {
+  background: #f7fafc;
 }
 
 /* Pagination */
@@ -700,6 +651,31 @@ const resetInvoiceFilters = () => {
   background: #3498db;
   color: white;
   border-color: #3498db;
+}
+
+/* Modal Styles */
+:deep(.modal-overlay) {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+:deep(.modal-container) {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 /* Responsive Design */
@@ -731,5 +707,39 @@ const resetInvoiceFilters = () => {
     width: 100%;
     justify-content: center;
   }
+}
+
+.no-data-row {
+  height: 200px;
+}
+
+.no-data-cell {
+  text-align: center;
+  color: #6b7280;
+  background: #f9fafb;
+}
+
+.no-data-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  gap: 1rem;
+}
+
+.no-data-content i {
+  font-size: 2rem;
+  color: #9ca3af;
+}
+
+.no-data-content p {
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.overdue {
+  color: #dc2626;
+  font-weight: 600;
 }
 </style>
