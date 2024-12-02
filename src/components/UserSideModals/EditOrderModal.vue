@@ -1,132 +1,238 @@
-<script setup>
-import { ref, watch } from 'vue';
-
-const props = defineProps({
-  modelValue: Boolean,
-  orderData: Object,
-});
-
-const emit = defineEmits(['update:modelValue', 'submit']);
-
-const formData = ref({});
-
-// Sync orderData with formData
-watch(
-  () => props.orderData,
-  (newData) => {
-    if (newData) {
-      formData.value = { ...newData }; // Deep copy the data
-    }
-  },
-  { immediate: true }
-);
-
-const closeModal = () => {
-  emit('update:modelValue', false);
-};
-
-const submitForm = () => {
-  emit('submit', { ...formData.value }); // Emit the updated data
-  closeModal();
-};
-</script>
-
-
 <template>
-  <div v-if="modelValue" class="modal-overlay">
+  <div v-if="modelValue" class="modal-overlay" @click.self="closeModal">
     <div class="modal-container">
+      <div class="modal-header">
+        <h2>Edit Order</h2>
+        <button class="close-button" @click="closeModal">&times;</button>
+      </div>
+
       <div class="modal-content">
-        <div class="modal-header">
-          <h2>Edit Order</h2>
-          <button @click="closeModal" class="close-button">&times;</button>
-        </div>
-
-        <div class="modal-body">
-          <div class="form-group">
-            <label>Order ID:</label>
-            <input
-              type="text"
-              v-model="formData.orderId"
-              readonly
-              class="form-control readonly"
-            >
+        <form id="editOrderForm" @submit.prevent="handleSubmit" class="modal-form">
+          <div class="form-section">
+            <div class="section-title">Order Information</div>
+            <div class="form-columns">
+              <div class="form-group">
+                <label>Order ID</label>
+                <input
+                  type="text"
+                  v-model="formData.orderId"
+                  class="form-control disabled-input"
+                  disabled
+                />
+              </div>
+            </div>
           </div>
 
-          <div class="form-group">
-            <label>Customer Name:</label>
-            <input
-              type="text"
-              v-model="formData.customerName"
-              class="form-control"
-              required
-            >
+          <div class="form-section">
+            <div class="section-title">Customer Details</div>
+            <div class="field-group">
+              <div class="field-row">
+                <div class="field-col">
+                  <div class="form-group required">
+                    <label>Customer Name</label>
+                    <input
+                      type="text"
+                      v-model="formData.customerName"
+                      :class="['form-control', { 'is-invalid': errors.customerName }]"
+                      required
+                    />
+                    <span class="error-message" v-if="errors.customerName">{{ errors.customerName }}</span>
+                  </div>
+                </div>
+                <div class="field-col">
+                  <div class="form-group required">
+                    <label>Sales Representative</label>
+                    <input
+                      type="text"
+                      v-model="formData.salesRepresentative"
+                      :class="['form-control', { 'is-invalid': errors.salesRepresentative }]"
+                      required
+                    />
+                    <span class="error-message" v-if="errors.salesRepresentative">{{ errors.salesRepresentative }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div class="form-group">
-            <label>Product Name:</label>
-            <input
-              type="text"
-              v-model="formData.productName"
-              class="form-control"
-              required
-            >
-          </div>
+          <div class="form-section">
+            <div class="section-title">Product Details</div>
+            <div class="field-group">
+              <div class="field-row">
+                <div class="field-col">
+                  <div class="form-group required">
+                    <label>Product Name</label>
+                    <input
+                      type="text"
+                      v-model="formData.productName"
+                      :class="['form-control', { 'is-invalid': errors.productName }]"
+                      required
+                    />
+                    <span class="error-message" v-if="errors.productName">{{ errors.productName }}</span>
+                  </div>
+                </div>
+                <div class="field-col">
+                  <div class="form-group required">
+                    <label>Quantity</label>
+                    <input
+                      type="number"
+                      v-model="formData.quantity"
+                      :class="['form-control', { 'is-invalid': errors.quantity }]"
+                      min="1"
+                      @input="calculateAmount"
+                      required
+                    />
+                    <span class="error-message" v-if="errors.quantity">{{ errors.quantity }}</span>
+                  </div>
+                </div>
+              </div>
 
-          <div class="form-group">
-            <label>Quantity:</label>
-            <input
-              type="number"
-              v-model="formData.quantity"
-              class="form-control"
-              min="1"
-              @input="calculateAmount"
-              required
-            >
+              <div class="field-row">
+                <div class="field-col">
+                  <div class="form-group">
+                    <label>Amount</label>
+                    <div class="price-input">
+                      <input
+                        type="text"
+                        :value="formattedAmount"
+                        class="form-control disabled-input"
+                        disabled
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div class="field-col">
+                  <div class="form-group required">
+                    <label>Status</label>
+                    <select
+                      v-model="formData.status"
+                      :class="['form-control', { 'is-invalid': errors.status }]"
+                      required
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="completed">Completed</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                    <span class="error-message" v-if="errors.status">{{ errors.status }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
+        </form>
+      </div>
 
-          <div class="form-group">
-            <label>Sales Representative:</label>
-            <input
-              type="text"
-              v-model="formData.salesRepresentative"
-              class="form-control"
-              required
-            >
-          </div>
-
-          <div class="form-group">
-            <label>Amount:</label>
-            <input
-              type="text"
-              v-model="formData.amount"
-              class="form-control readonly"
-              readonly
-            >
-          </div>
-
-          <div class="form-group">
-            <label>Status:</label>
-            <select
-              v-model="formData.status"
-              class="form-control"
-              required
-            >
-              <option value="Pending">Pending</option>
-              <option value="Processing">Processing</option>
-              <option value="Completed">Completed</option>
-              <option value="Cancelled">Cancelled</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="modal-footer">
-          <button @click="closeModal" class="cancel-button">Cancel</button>
-          <button @click="submitForm" class="submit-button">Done</button>
-        </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" @click="closeModal">Cancel</button>
+        <button type="submit" form="editOrderForm" class="btn-submit">Save Changes</button>
       </div>
     </div>
   </div>
 </template>
+
+<script setup>
+import { ref, computed, watch } from 'vue'
+import { useOrderInvoiceStore } from '@/stores/salesStore'
+
+const store = useOrderInvoiceStore()
+const props = defineProps({
+  modelValue: Boolean
+})
+const emit = defineEmits(['update:modelValue', 'submit'])
+
+const formData = ref({
+  orderId: '',
+  customerName: '',
+  salesRepresentative: '',
+  productName: '',
+  quantity: 0,
+  amount: 0,
+  status: 'pending'
+})
+
+// Watch for changes in the store's editOrder
+watch(() => store.editOrder, (newOrder) => {
+  if (newOrder) {
+    formData.value = {
+      orderId: newOrder.orderId || '',
+      customerName: newOrder.customerName || '',
+      salesRepresentative: newOrder.salesRepresentative || '',
+      productName: newOrder.productName || '',
+      quantity: newOrder.quantity || 0,
+      amount: newOrder.amount || 0,
+      status: newOrder.status || 'pending'
+    }
+  }
+}, { immediate: true })
+
+const errors = ref({
+  customerName: '',
+  salesRepresentative: '',
+  productName: '',
+  quantity: '',
+  status: ''
+})
+
+const formattedAmount = computed(() => {
+  return new Intl.NumberFormat('en-PH', {
+    style: 'currency',
+    currency: 'PHP',
+    minimumFractionDigits: 2
+  }).format(formData.value.amount)
+})
+
+const validateForm = () => {
+  errors.value = {}
+  
+  if (!formData.value.customerName?.trim()) {
+    errors.value.customerName = 'Customer name is required'
+  }
+  
+  if (!formData.value.salesRepresentative?.trim()) {
+    errors.value.salesRepresentative = 'Sales representative is required'
+  }
+  
+  if (!formData.value.productName?.trim()) {
+    errors.value.productName = 'Product name is required'
+  }
+  
+  if (!formData.value.quantity || formData.value.quantity < 1) {
+    errors.value.quantity = 'Quantity must be at least 1'
+  }
+
+  return Object.keys(errors.value).length === 0
+}
+
+const calculateAmount = () => {
+  // You may want to implement your own calculation logic here
+  // For now, we'll just use the existing amount
+}
+
+const closeModal = () => {
+  emit('update:modelValue', false)
+  errors.value = {}
+  formData.value = {
+    orderId: '',
+    customerName: '',
+    salesRepresentative: '',
+    productName: '',
+    quantity: 0,
+    amount: 0,
+    status: 'pending'
+  }
+}
+
+const handleSubmit = async () => {
+  if (validateForm()) {
+    try {
+      await store.handleEditOrderSubmit(formData.value)
+      closeModal()
+    } catch (error) {
+      console.error('Error updating order:', error)
+    }
+  }
+}
+</script>
 
 <style scoped>
 .modal-overlay {
@@ -143,128 +249,247 @@ const submitForm = () => {
 }
 
 .modal-container {
-  background-color: white;
-  border-radius: 8px;
+  background: white;
+  border-radius: 1rem;
   width: 90%;
-  max-width: 500px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  animation: modal-appear 0.3s ease-out;
-}
-
-@keyframes modal-appear {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.modal-content {
-  padding: 20px;
+  max-width: 800px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
 .modal-header {
+  background-color: #f8fafc;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  border-top-left-radius: 1rem;
+  border-top-right-radius: 1rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
 }
 
 .modal-header h2 {
   margin: 0;
-  font-size: 24px;
-  color: #333;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
 }
 
 .close-button {
   background: none;
   border: none;
-  font-size: 24px;
+  font-size: 1.5rem;
+  color: #6b7280;
   cursor: pointer;
-  color: #666;
+  padding: 0.5rem;
+  transition: color 0.2s;
 }
 
-.modal-body {
-  margin-bottom: 20px;
+.close-button:hover {
+  color: #1f2937;
+}
+
+.modal-content {
+  padding: 1.5rem;
+}
+
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.form-section {
+  margin-bottom: 2rem;
+  background: #f8fafc;
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+}
+
+.form-section:last-child {
+  margin-bottom: 0;
+}
+
+.section-title {
+  font-size: 0.875rem;
+  color: #4f46e5;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 1.25rem;
+}
+
+.form-columns {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
 }
 
 .form-group {
-  margin-bottom: 15px;
+  margin-bottom: 1rem;
+  position: relative;
+}
+
+.form-group:last-child {
+  margin-bottom: 0;
 }
 
 .form-group label {
   display: block;
-  margin-bottom: 5px;
-  color: #666;
+  margin-bottom: 0.375rem;
+  color: #4b5563;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.form-group.required label::after {
+  content: "*";
+  color: #ef4444;
+  margin-left: 0.25rem;
 }
 
 .form-control {
   width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #ced4da;
-  border-radius: 4px;
-  font-size: 14px;
-  line-height: 1.5;
-  color: #495057;
-  background-color: #fff;
+  height: 2.5rem;
+  padding: 0.5rem 0.75rem;
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  color: #1f2937;
+  transition: all 0.2s;
 }
 
-.form-control.readonly {
-  background-color: #f8f9fa;
-  cursor: not-allowed;
-}
-
-select.form-control {
-  appearance: none;
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-  background-repeat: no-repeat;
-  background-position: right 8px center;
-  background-size: 16px;
-  padding-right: 32px;
-}
-
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  padding-top: 20px;
-  border-top: 1px solid #e9ecef;
-}
-
-.cancel-button {
-  padding: 8px 16px;
-  background-color: #6c757d;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-.submit-button {
-  padding: 8px 16px;
-  background-color: #28a745;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-.cancel-button:hover {
-  background-color: #5a6268;
-}
-
-.submit-button:hover {
-  background-color: #218838;
+.form-control:hover:not(:disabled) {
+  border-color: #d1d5db;
 }
 
 .form-control:focus {
   outline: none;
-  border-color: #80bdff;
-  box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.disabled-input {
+  background-color: #f9fafb;
+  border-color: #e5e7eb;
+  color: #6b7280;
+  cursor: not-allowed;
+  text-align: right;
+  padding-right: 0.75rem;
+}
+
+.price-input .form-control {
+  text-align: right;
+  padding-right: 0.75rem;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.5px;
+}
+
+.error-message {
+  position: absolute;
+  left: 0;
+  bottom: -1.25rem;
+  color: #ef4444;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.field-group {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+}
+
+.field-row {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.field-row:last-child {
+  margin-bottom: 0;
+}
+
+.field-col {
+  flex: 1;
+}
+
+.modal-footer {
+  background-color: #f8fafc;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #e5e7eb;
+  border-bottom-left-radius: 1rem;
+  border-bottom-right-radius: 1rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+}
+
+.btn-cancel {
+  padding: 0.625rem 1.25rem;
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #4b5563;
+  transition: all 0.2s;
+}
+
+.btn-cancel:hover {
+  background-color: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.btn-submit {
+  padding: 0.625rem 1.25rem;
+  background-color: #4f46e5;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: white;
+  transition: all 0.2s;
+}
+
+.btn-submit:hover {
+  background-color: #4338ca;
+}
+
+@media (max-width: 768px) {
+  .modal-container {
+    width: 100%;
+    height: 100%;
+    max-height: 100vh;
+    margin: 0;
+    border-radius: 0;
+  }
+
+  .modal-header,
+  .modal-footer {
+    border-radius: 0;
+  }
+
+  .form-section {
+    border-radius: 0.5rem;
+  }
+
+  .field-group {
+    border-radius: 0.5rem;
+  }
+
+  .field-row {
+    flex-direction: column;
+  }
+
+  .error-message {
+    position: relative;
+    bottom: 0;
+    margin-top: 0.25rem;
+  }
 }
 </style>
