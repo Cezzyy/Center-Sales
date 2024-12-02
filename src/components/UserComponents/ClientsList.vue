@@ -1,5 +1,5 @@
 <script setup>
-import { defineAsyncComponent, computed } from 'vue'
+import { defineAsyncComponent, computed, ref } from 'vue'
 import { useClientStore } from '@/stores/clientStore'
 import { storeToRefs } from 'pinia'
 
@@ -9,6 +9,9 @@ const AddClientModal = defineAsyncComponent(() =>
 )
 const EditClientModal = defineAsyncComponent(() => 
   import('../UserSideModals/EditClientModal.vue')
+)
+const DeleteConfirmationModal = defineAsyncComponent(() => 
+  import('../UserSideModals/DeleteConfirmationModal.vue')
 )
 
 // Initialize store
@@ -23,6 +26,10 @@ const {
   showEditClientModal,
   selectedClient 
 } = storeToRefs(store)
+
+// Add state for delete confirmation
+const showDeleteModal = ref(false)
+const clientToDelete = ref(null)
 
 // Computed properties from store getters
 const hasClients = computed(() => filteredClients.value.length > 0)
@@ -53,14 +60,24 @@ const handleEditClient = async (clientData) => {
   }
 }
 
-const handleDeleteClient = async (clientId) => {
+const handleDeleteClient = async (client) => {
+  clientToDelete.value = client
+  showDeleteModal.value = true
+}
+
+const confirmDelete = async () => {
   try {
-    if (confirm('Are you sure you want to delete this client?')) {
-      await store.deleteClient(clientId)
-    }
+    await store.deleteClient(clientToDelete.value.id)
+    showDeleteModal.value = false
+    clientToDelete.value = null
   } catch (error) {
     console.error('Failed to delete client:', error)
   }
+}
+
+const cancelDelete = () => {
+  showDeleteModal.value = false
+  clientToDelete.value = null
 }
 
 // Navigation handlers
@@ -115,6 +132,14 @@ const goToPreviousPage = () => {
       @save="handleEditClient"
     />
 
+    <DeleteConfirmationModal
+      v-if="showDeleteModal"
+      :isOpen="showDeleteModal"
+      :client="clientToDelete"
+      @confirm="confirmDelete"
+      @cancel="cancelDelete"
+    />
+
     <!-- Table Section -->
     <div class="table-container">
       <table class="clients-table" v-if="hasClients">
@@ -157,7 +182,7 @@ const goToPreviousPage = () => {
               </button>
               <button 
                 class="delete-btn" 
-                @click="handleDeleteClient(client.id)"
+                @click="handleDeleteClient(client)"
                 :title="`Delete ${client.firstName} ${client.lastName}`"
               >
                 Delete
