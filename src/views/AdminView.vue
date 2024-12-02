@@ -1,5 +1,8 @@
 <script setup>
 import { defineAsyncComponent, ref } from "vue";
+import { useAuthStore } from '../stores/authStore'
+import { useRouter } from 'vue-router'
+
 const UserManagement = defineAsyncComponent(() => import("../components/AdminComponents/UserManagement.vue"));
 const RoleManagement = defineAsyncComponent(() => import("../components/AdminComponents/RoleManagement.vue"));
 const HistoryLog = defineAsyncComponent(() => import("../components/AdminComponents/HistoryLog.vue"));
@@ -21,6 +24,9 @@ library.add(
   faSignOutAlt
 );
 
+const authStore = useAuthStore()
+const router = useRouter()
+
 const isSidebarOpen = ref(false);
 const currentView = ref("User");
 const isProfileModalVisible = ref(false);
@@ -35,6 +41,11 @@ const toggleProfileModal = () => {
 
 const setView = (view) => {
   currentView.value = view;
+};
+
+const handleLogout = () => {
+  authStore.logout()
+  router.push('/')
 };
 </script>
 
@@ -59,9 +70,9 @@ const setView = (view) => {
             />
           </svg>
         </div>
-        <div class="section-title">{{ currentView }}</div>
+        <h1>Admin Dashboard</h1>
       </div>
-      <div class="header-icons">
+      <div class="header-right">
         <div class="icon" @click="toggleProfileModal">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -77,38 +88,31 @@ const setView = (view) => {
               d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
             />
           </svg>
-          <ProfileModal
-            v-if="isProfileModalVisible"
-            @close="isProfileModalVisible = false"
-            :isOpen="isProfileModalVisible"
-          />
         </div>
       </div>
     </header>
 
     <!-- Sidebar -->
-    <aside class="sidebar" :class="{ 'sidebar-open': isSidebarOpen }">
-      <nav class="nav-menu">
-        <a href="#" class="nav-item" @click="setView('User')">
-          <font-awesome-icon :icon="['fas', 'chart-simple']" class="nav-icon" />
-          Users
-        </a>
-        <a href="#" class="nav-item" @click="setView('Role')">
-          <font-awesome-icon :icon="['fas', 'person']" class="nav-icon" />
-          Roles
-        </a>
-        <a href="#" class="nav-item" @click="setView('History')">
-          <font-awesome-icon :icon="['fas', 'suitcase']" class="nav-icon" />
-          History
-        </a>
-      </nav>
-      <div class="logout-container">
-        <a href="#" class="nav-item logout-button">
-          <font-awesome-icon :icon="['fas', 'sign-out-alt']" class="nav-icon" />
-          Logout
-        </a>
+    <div :class="['sidebar', { 'sidebar-open': isSidebarOpen }]">
+      <div class="nav-items">
+        <div class="nav-item" :class="{ active: currentView === 'User' }" @click="setView('User')">
+          <font-awesome-icon icon="fa-solid fa-person" />
+          <span>User Management</span>
+        </div>
+        <div class="nav-item" :class="{ active: currentView === 'Role' }" @click="setView('Role')">
+          <font-awesome-icon icon="fa-solid fa-suitcase" />
+          <span>Role Management</span>
+        </div>
+        <div class="nav-item" :class="{ active: currentView === 'History' }" @click="setView('History')">
+          <font-awesome-icon icon="fa-solid fa-chart-simple" />
+          <span>History Log</span>
+        </div>
+        <div class="nav-item logout" @click="handleLogout">
+          <font-awesome-icon icon="fa-solid fa-sign-out-alt" />
+          <span>Logout</span>
+        </div>
       </div>
-    </aside>
+    </div>
 
     <!-- Main Content -->
     <main class="main-content">
@@ -116,6 +120,13 @@ const setView = (view) => {
       <component :is="currentView === 'Role' ? RoleManagement : null" />
       <component :is="currentView === 'History' ? HistoryLog : null" />
     </main>
+
+    <!-- Profile Modal -->
+    <ProfileModal
+      v-if="isProfileModalVisible"
+      :isOpen="isProfileModalVisible"
+      @close="toggleProfileModal"
+    />
   </div>
 </template>
 
@@ -151,16 +162,10 @@ h1 {
   gap: 1rem;
 }
 
-.section-title {
-  font-size: 1.25rem;
-  font-weight: 500;
-  color: rgb(30, 41, 59);
-}
-
-.header-icons {
+.header-right {
   display: flex;
-  gap: 1rem;
   align-items: center;
+  gap: 1rem;
 }
 
 .icon {
@@ -188,7 +193,7 @@ h1 {
   transform: translateX(0);
 }
 
-.nav-menu {
+.nav-items {
   padding: 1rem 0;
   flex-grow: 1;
 }
@@ -207,21 +212,19 @@ h1 {
   background-color: rgb(248, 250, 252);
 }
 
-.nav-icon {
-  font-size: 1.25rem;
+.nav-item.active {
+  background-color: rgb(237, 242, 247);
 }
 
-.logout-container {
-  border-top: 1px solid #e2e8f0;
-  padding: 1rem 0;
+.logout {
+  margin-top: auto;
+  color: #dc2626;
+  cursor: pointer;
 }
 
-.logout-button {
-  color: #ef4444;
-}
-
-.logout-button:hover {
+.logout:hover {
   background-color: #fee2e2;
+  color: #dc2626;
 }
 
 .main-content {

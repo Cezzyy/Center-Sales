@@ -1,22 +1,16 @@
 <script setup>
-defineProps({
+import { useAuthStore } from '../../stores/authStore'
+import { computed } from 'vue'
+
+const props = defineProps({
   isOpen: {
     type: Boolean,
     required: true,
-  },
-  userData: {
-    type: Object,
-    required: true,
-    default: () => ({
-      firstName: '',
-      lastName: '',
-      position: '',
-      email: '',
-      phoneNumber: '',
-      profilePicture: '',
-    }),
-  },
+  }
 })
+
+const authStore = useAuthStore()
+const currentUser = computed(() => authStore.currentUser)
 
 const emit = defineEmits(['close', 'editProfile'])
 
@@ -30,44 +24,46 @@ const handleEditProfile = () => {
 </script>
 
 <template>
-  <div v-if="isOpen" class="modal-overlay">
-    <div class="modal-container">
+  <div v-if="isOpen" class="modal-overlay" @click="handleClose">
+    <div class="modal-container" @click.stop>
       <button class="close-button" @click="handleClose">×</button>
 
       <div class="modal-content">
-        <!-- Left Side - Profile Picture -->
+        <!-- Left Side - Profile Picture and Role Badge -->
         <div class="profile-picture-section">
-          <img :src="userData.profilePicture" alt="Profile Picture" class="profile-picture" />
+          <div class="avatar">{{ currentUser?.name?.charAt(0) || 'U' }}</div>
+          <div class="role-badge" :class="currentUser?.role">
+            {{ currentUser?.role?.toUpperCase() }}
+          </div>
         </div>
 
         <!-- Right Side - Profile Information -->
         <div class="profile-info-section">
           <div class="info-group">
-            <label>First Name</label>
-            <p>{{ userData.firstName }}</p>
+            <label>Name</label>
+            <p>{{ currentUser?.name || 'Not Available' }}</p>
           </div>
 
           <div class="info-group">
-            <label>Last Name</label>
-            <p>{{ userData.lastName }}</p>
-          </div>
-
-          <div class="info-group">
-            <label>Company Position</label>
-            <p>{{ userData.position }}</p>
+            <label>Position</label>
+            <p>{{ currentUser?.position || 'Not Available' }}</p>
           </div>
 
           <div class="info-group">
             <label>Email Address</label>
-            <p>{{ userData.email }}</p>
+            <p>{{ currentUser?.email || 'Not Available' }}</p>
           </div>
 
           <div class="info-group">
-            <label>Phone Number</label>
-            <p>{{ userData.phoneNumber }}</p>
+            <label>Role</label>
+            <p class="role-text" :class="currentUser?.role">
+              {{ currentUser?.role?.toUpperCase() || 'Not Available' }}
+            </p>
           </div>
 
-          <button class="edit-button" @click="handleEditProfile">Edit Profile Information</button>
+          <div class="button-group">
+            <button class="edit-button" @click="handleEditProfile">Edit Profile</button>
+          </div>
         </div>
       </div>
     </div>
@@ -90,12 +86,12 @@ const handleEditProfile = () => {
 
 .modal-container {
   background-color: white;
-  border-radius: 8px;
-  padding: 24px;
+  border-radius: 12px;
+  padding: 32px;
   width: 800px;
   max-width: 90%;
   position: relative;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
 }
 
 .close-button {
@@ -108,71 +104,123 @@ const handleEditProfile = () => {
   cursor: pointer;
   color: #666;
   padding: 4px 8px;
+  border-radius: 4px;
 }
 
 .close-button:hover {
-  color: #333;
+  background-color: #f3f4f6;
 }
 
 .modal-content {
   display: flex;
-  gap: 24px;
+  gap: 32px;
 }
 
 .profile-picture-section {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-}
-
-.profile-picture {
-  width: 200px;
-  height: 200px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid #eee;
-}
-
-.profile-info-section {
-  flex: 2;
+  flex: 0 0 200px;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 16px;
 }
 
-.info-group {
+.avatar {
+  width: 150px;
+  height: 150px;
+  border-radius: 75px;
+  background-color: #2563eb;
+  color: white;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  justify-content: center;
+  align-items: center;
+  font-size: 48px;
+  font-weight: bold;
+}
+
+.role-badge {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.role-badge.admin {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.role-badge.user {
+  background-color: #e0e7ff;
+  color: #3730a3;
+}
+
+.profile-info-section {
+  flex: 1;
+}
+
+.info-group {
+  margin-bottom: 24px;
 }
 
 .info-group label {
+  display: block;
   font-size: 14px;
-  color: #666;
-  font-weight: 500;
+  color: #6b7280;
+  margin-bottom: 4px;
 }
 
 .info-group p {
   font-size: 16px;
-  color: #333;
-  margin: 0;
-  padding: 4px 0;
+  color: #1f2937;
+  font-weight: 500;
+}
+
+.role-text {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.role-text.admin {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.role-text.user {
+  background-color: #e0e7ff;
+  color: #3730a3;
+}
+
+.button-group {
+  display: flex;
+  gap: 12px;
+  margin-top: 32px;
 }
 
 .edit-button {
-  margin-top: 16px;
-  background-color: #4a90e2;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  background-color: #2563eb;
   color: white;
   border: none;
-  padding: 12px 24px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: background-color 0.2s;
 }
 
 .edit-button:hover {
-  background-color: #357abd;
+  background-color: #1d4ed8;
+}
+
+@media (max-width: 640px) {
+  .modal-content {
+    flex-direction: column;
+  }
+
+  .profile-picture-section {
+    flex: 0 0 auto;
+  }
 }
 </style>
