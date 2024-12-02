@@ -1,10 +1,8 @@
 <script setup>
 import { defineAsyncComponent, ref } from "vue";
-const HomeDashboard = defineAsyncComponent(() => import("../components/UserComponents/HomeDashboard.vue"));
-const Clients = defineAsyncComponent(() => import("../components/UserComponents/ClientsList.vue"));
-const Sales = defineAsyncComponent(() => import("../components/UserComponents/SalesTracking.vue"));
-const Reports = defineAsyncComponent(() => import("../components/UserComponents/ReportsOverview.vue"));
-const Products = defineAsyncComponent(() => import("../components/UserComponents/ProductsList.vue"));
+const UserManagement = defineAsyncComponent(() => import("../components/AdminComponents/UserManagement.vue"));
+const RoleManagement = defineAsyncComponent(() => import("../components/AdminComponents/RoleManagement.vue"));
+const HistoryLog = defineAsyncComponent(() => import("../components/AdminComponents/HistoryLog.vue"));
 const ProfileModal = defineAsyncComponent(() => import("../components/UserSideModals/ProfileModal.vue"));
 
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
@@ -13,8 +11,6 @@ import {
   faChartSimple,
   faPerson,
   faSuitcase,
-  faSquarePollHorizontal,
-  faBoxesStacked,
   faSignOutAlt,
 } from "@fortawesome/free-solid-svg-icons";
 
@@ -22,13 +18,11 @@ library.add(
   faChartSimple,
   faPerson,
   faSuitcase,
-  faSquarePollHorizontal,
-  faBoxesStacked,
   faSignOutAlt
 );
 
 const isSidebarOpen = ref(false);
-const currentView = ref("Dashboard");
+const currentView = ref("User");
 const isProfileModalVisible = ref(false);
 
 const toggleSidebar = () => {
@@ -95,25 +89,17 @@ const setView = (view) => {
     <!-- Sidebar -->
     <aside class="sidebar" :class="{ 'sidebar-open': isSidebarOpen }">
       <nav class="nav-menu">
-        <a href="#" class="nav-item" @click="setView('Dashboard')">
+        <a href="#" class="nav-item" @click="setView('User')">
           <font-awesome-icon :icon="['fas', 'chart-simple']" class="nav-icon" />
-          Dashboard
+          Users
         </a>
-        <a href="#" class="nav-item" @click="setView('Clients')">
+        <a href="#" class="nav-item" @click="setView('Role')">
           <font-awesome-icon :icon="['fas', 'person']" class="nav-icon" />
-          Clients
+          Roles
         </a>
-        <a href="#" class="nav-item" @click="setView('Sales')">
+        <a href="#" class="nav-item" @click="setView('History')">
           <font-awesome-icon :icon="['fas', 'suitcase']" class="nav-icon" />
-          Sales
-        </a>
-        <a href="#" class="nav-item" @click="setView('Reports')">
-          <font-awesome-icon :icon="['fas', 'square-poll-horizontal']" class="nav-icon" />
-          Reports
-        </a>
-        <a href="#" class="nav-item" @click="setView('Products')">
-          <font-awesome-icon :icon="['fas', 'boxes-stacked']" class="nav-icon" />
-          Products
+          History
         </a>
       </nav>
       <div class="logout-container">
@@ -126,32 +112,22 @@ const setView = (view) => {
 
     <!-- Main Content -->
     <main class="main-content">
-      <component :is="currentView === 'Dashboard' ? HomeDashboard : null" />
-      <component :is="currentView === 'Clients' ? Clients : null" />
-      <component :is="currentView === 'Sales' ? Sales : null" />
-      <component :is="currentView === 'Reports' ? Reports : null" />
-      <component :is="currentView === 'Products' ? Products : null" />
+      <component :is="currentView === 'User' ? UserManagement : null" />
+      <component :is="currentView === 'Role' ? RoleManagement : null" />
+      <component :is="currentView === 'History' ? HistoryLog : null" />
     </main>
   </div>
 </template>
 
-<style>
-:root {
-  --primary-color: #2563eb;
-  --background-color: #f8fafc;
-  --text-color: #1e293b;
-  --sidebar-width: 250px;
-  --header-height: 64px;
-}
-
+<style scoped>
 h1 {
-  color: var(--text-color);
+  color: rgb(30, 41, 59);
   font-size: 2rem;
 }
 
 .layout {
   min-height: 100vh;
-  background-color: var(--background-color);
+  background-color: #f8fafc;
 }
 
 .header {
@@ -159,7 +135,7 @@ h1 {
   top: 0;
   right: 0;
   left: 0;
-  height: var(--header-height);
+  height: 64px;
   background: white;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   display: flex;
@@ -178,7 +154,7 @@ h1 {
 .section-title {
   font-size: 1.25rem;
   font-weight: 500;
-  color: var(--text-color);
+  color: rgb(30, 41, 59);
 }
 
 .header-icons {
@@ -191,15 +167,15 @@ h1 {
   width: 24px;
   height: 24px;
   cursor: pointer;
-  color: var(--text-color);
+  color: rgb(30, 41, 59)
 }
 
 .sidebar {
   position: fixed;
-  top: var(--header-height);
+  top: 64px;
   left: 0;
   bottom: 0;
-  width: var(--sidebar-width);
+  width: 250px;
   background: white;
   box-shadow: 1px 0 3px rgba(0, 0, 0, 0.1);
   transform: translateX(-100%);
@@ -221,14 +197,14 @@ h1 {
   display: flex;
   align-items: center;
   padding: 0.75rem 1.5rem;
-  color: var(--text-color);
+  color: rgb(30, 41, 59);
   text-decoration: none;
   transition: background-color 0.2s;
   gap: 0.75rem;
 }
 
 .nav-item:hover {
-  background-color: var(--background-color);
+  background-color: rgb(248, 250, 252);
 }
 
 .nav-icon {
@@ -249,19 +225,12 @@ h1 {
 }
 
 .main-content {
-  padding: calc(var(--header-height) + 2rem) 2rem 2rem;
+  padding: calc(64px + 2rem) 2rem 2rem;
   transition: margin-left 0.3s ease;
-}
-
-.content-shifted {
-  margin-left: var(--sidebar-width);
+  background: rgb(248, 250, 252);
 }
 
 @media (max-width: 768px) {
-  .content-shifted {
-    margin-left: 0;
-  }
-
   .sidebar {
     z-index: 90;
   }
