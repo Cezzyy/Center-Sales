@@ -10,8 +10,39 @@ const email = ref('')
 const password = ref('')
 const showPassword = ref(false)
 const errorMessage = ref('')
+const emailError = ref('')
+const passwordError = ref('')
+
+const validateForm = () => {
+  let isValid = true
+  emailError.value = ''
+  passwordError.value = ''
+  errorMessage.value = ''
+
+  // Email validation
+  if (!email.value) {
+    emailError.value = 'Email is required'
+    isValid = false
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value)) {
+    emailError.value = 'Please enter a valid email address'
+    isValid = false
+  }
+
+  // Password validation
+  if (!password.value) {
+    passwordError.value = 'Password is required'
+    isValid = false
+  } else if (password.value.length < 6) {
+    passwordError.value = 'Password must be at least 6 characters'
+    isValid = false
+  }
+
+  return isValid
+}
 
 const handleLogin = async () => {
+  if (!validateForm()) return
+
   try {
     const result = await authStore.login(email.value, password.value)
     if (result.success) {
@@ -21,7 +52,7 @@ const handleLogin = async () => {
         router.push('/home')
       }
     } else {
-      errorMessage.value = 'Invalid credentials'
+      errorMessage.value = 'Invalid email or password'
     }
   } catch (error) {
     errorMessage.value = 'An error occurred during login'
@@ -34,9 +65,12 @@ const handleLogin = async () => {
   <div class="login-container">
     <!-- Header -->
     <header class="header">
+      <div class="logo-small">
+        <img src="/src/assets/centerlogo.jpg" alt="Company Logo" class="small-logo">
+      </div>
       <nav class="nav-links">
-        <router-link to="/about">About</router-link>
-        <router-link to="/contacts">Contacts</router-link>
+        <router-link to="/about" class="nav-link">About</router-link>
+        <router-link to="/contacts" class="nav-link">Contacts</router-link>
       </nav>
     </header>
 
@@ -56,7 +90,7 @@ const handleLogin = async () => {
       <div class="right-side">
         <div class="form-container">
           <h1>Login</h1>
-          <form @submit.prevent="handleLogin">
+          <form @submit.prevent="handleLogin" novalidate>
             <div class="form-group">
               <label for="email">Email</label>
               <input
@@ -64,8 +98,9 @@ const handleLogin = async () => {
                 id="email"
                 v-model="email"
                 placeholder="Enter your email"
-                required
+                :class="{ 'error-input': emailError }"
               >
+              <span v-if="emailError" class="error-text">{{ emailError }}</span>
             </div>
 
             <div class="form-group">
@@ -76,7 +111,7 @@ const handleLogin = async () => {
                   id="password"
                   v-model="password"
                   placeholder="Enter your password"
-                  required
+                  :class="{ 'error-input': passwordError }"
                 >
                 <button
                   type="button"
@@ -86,6 +121,7 @@ const handleLogin = async () => {
                   {{ showPassword ? 'Hide' : 'Show' }}
                 </button>
               </div>
+              <span v-if="passwordError" class="error-text">{{ passwordError }}</span>
             </div>
 
             <div v-if="errorMessage" class="error-message">
@@ -108,30 +144,50 @@ const handleLogin = async () => {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  padding-top: 60px; /* Add space for fixed header */
 }
 
 /* Header Styles */
 .header {
-  padding: 1.5rem 2rem;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
   background-color: white;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+}
+
+.logo-small {
+  height: 40px;
+}
+
+.small-logo {
+  height: 100%;
+  object-fit: contain;
 }
 
 .nav-links {
   display: flex;
-  justify-content: flex-end;
   gap: 2rem;
 }
 
-.nav-links a {
+.nav-link {
   text-decoration: none;
   color: #333;
   font-weight: 500;
-  transition: color 0.3s ease;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  transition: all 0.3s ease;
 }
 
-.nav-links a:hover {
-  color: #2563eb;
+.nav-link:hover {
+  background-color: #f5f5f5;
+  color: #1a73e8;
 }
 
 /* Main Content */
@@ -238,10 +294,26 @@ input:focus {
   padding: 0.25rem;
 }
 
-.error-message {
+.error-input {
+  border-color: #dc2626 !important;
+  background-color: #fff5f5;
+}
+
+.error-text {
   color: #dc2626;
   font-size: 0.875rem;
-  margin-bottom: 1.5rem;
+  margin-top: 0.25rem;
+  display: block;
+}
+
+.error-message {
+  background-color: #fee2e2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  padding: 0.75rem;
+  border-radius: 0.375rem;
+  margin-bottom: 1rem;
+  text-align: center;
 }
 
 .login-button {

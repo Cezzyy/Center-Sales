@@ -20,13 +20,13 @@ const router = createRouter({
       path: '/about', 
       name: 'about', 
       component: () => import('../views/AboutView.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: false }
     },
     { 
       path: '/contacts', 
       name: 'contact', 
       component: () => import('../views/ContactView.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: false }
     },
     { 
       path: '/admin', 
