@@ -4,6 +4,8 @@ import { useReportsStore } from '@/stores/reportsStore'
 import { useOrderInvoiceStore } from '@/stores/salesStore'
 import { saveAs } from 'file-saver'
 import * as XLSX from 'xlsx'
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+import { faChartLine, faPlus } from '@fortawesome/free-solid-svg-icons'
 const AddReportModal = defineAsyncComponent(() => import('../UserSideModals/AddReportModal.vue'))
 
 // Get stores
@@ -127,7 +129,7 @@ watch([startDate, endDate, searchQuery], () => {
 
     <!-- Table Section -->
     <section class="table-section">
-      <table class="reports-table">
+      <table class="reports-table" v-if="reports.length > 0">
         <thead>
           <tr>
             <th @click="handleSort('reportId')">Report ID</th>
@@ -160,8 +162,26 @@ watch([startDate, endDate, searchQuery], () => {
         </tbody>
       </table>
 
+      <!-- Empty State -->
+      <div v-else class="empty-state">
+        <div class="empty-state__content">
+          <div class="empty-state__icon-wrapper">
+            <font-awesome-icon 
+              :icon="faChartLine" 
+              class="empty-state__icon"
+            />
+          </div>
+          <h3 class="empty-state__title">No Reports Found</h3>
+          <p class="empty-state__message">There are no reports matching your current filters. Try adjusting your search criteria or add a new report.</p>
+          <button @click="showAddReportModal = true" class="btn-add empty-state__button">
+            <font-awesome-icon :icon="faPlus" />
+            Add New Report
+          </button>
+        </div>
+      </div>
+
       <!-- Pagination -->
-      <div class="pagination">
+      <div class="pagination" v-if="reports.length > 0">
         <button
           :disabled="currentPage === 1"
           @click="changePage(currentPage - 1)"
@@ -447,5 +467,66 @@ watch([startDate, endDate, searchQuery], () => {
   .reports-table td {
     padding: 0.75rem;
   }
+}
+
+.empty-state {
+  background: white;
+  border-radius: 8px;
+  padding: 4rem 2rem;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin: 2rem 0;
+  min-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-state__content {
+  max-width: 400px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.empty-state__icon-wrapper {
+  background: rgba(79, 70, 229, 0.1);
+  border-radius: 50%;
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.empty-state__icon {
+  font-size: 2.5rem;
+  color: #4f46e5;
+}
+
+.empty-state__title {
+  color: #2c3e50;
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.empty-state__message {
+  color: #6c757d;
+  line-height: 1.6;
+  margin: 0 0 1.5rem;
+  font-size: 1rem;
+}
+
+.empty-state__button {
+  min-width: 200px;
+  justify-content: center;
+}
+
+.empty-state__button svg {
+  margin-right: 0.5rem;
 }
 </style>

@@ -69,7 +69,7 @@ const calculateDaysOverdue = (dueDate) => {
 const openAddSalesModal = () => store.openModal('AddSales')
 const closeAddSalesModal = () => store.closeModal('AddSales')
 const openAddInvoiceModal = () => store.openModal('AddInvoice')
-// const closeAddInvoiceModal = () => store.closeModal('AddInvoice')
+const closeAddInvoiceModal = () => store.closeModal('AddInvoice')
 const openViewOrderModal = (order) => {
   viewOrder.value = order
   store.openModal('ViewOrder')
@@ -79,12 +79,12 @@ const openEditOrderModal = (order) => {
   editOrder.value = { ...order }
   store.openModal('EditOrder')
 }
-// const closeEditOrderModal = () => store.closeModal('EditOrder')
-// const openEditInvoiceModal = (invoice) => {
-//   editInvoice.value = { ...invoice }
-//   store.openModal('EditInvoice')
-// }
-// const closeEditInvoiceModal = () => store.closeModal('EditInvoice')
+const closeEditOrderModal = () => store.closeModal('EditOrder')
+const openEditInvoiceModal = (invoice) => {
+  editInvoice.value = { ...invoice }
+  store.openModal('EditInvoice')
+}
+const closeEditInvoiceModal = () => store.closeModal('EditInvoice')
 
 // Form submission handlers
 const handleEditOrderSubmit = async (updatedOrder) => {
@@ -157,15 +157,24 @@ const resetInvoiceFilters = () => store.resetFilters('invoices')
 
 // Mark invoice as paid
 const markAsPaid = async (invoiceId) => {
-  const invoice = store.getInvoiceById(invoiceId)
-  await store.markInvoiceAsPaid(invoiceId)
+  try {
+    const invoice = store.getInvoiceById(invoiceId);
+    if (!invoice) {
+      console.error('Invoice not found:', invoiceId);
+      return;
+    }
 
-  await logInvoiceAction(
-    'UPDATE_INVOICE_STATUS',
-    `Marked invoice #${invoiceId} as paid - Order #${invoice.orderId}`,
-    invoiceId,
-    { status: 'paid', orderId: invoice.orderId },
-  )
+    await store.markInvoiceAsPaid(invoiceId);
+
+    await logInvoiceAction(
+      'UPDATE_INVOICE_STATUS',
+      `Marked invoice #${invoiceId} as paid`,
+      invoiceId,
+      { status: 'paid' }
+    );
+  } catch (error) {
+    console.error('Error marking invoice as paid:', error);
+  }
 }
 </script>
 
