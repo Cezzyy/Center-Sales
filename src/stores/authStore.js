@@ -44,14 +44,16 @@ export const useAuthStore = defineStore('auth', {
     return {
       user: storedUser ? JSON.parse(storedUser) : null,
       isAuthenticated: !!token && !!storedUser,
-      token: token || null
+      token: token || null,
+      users: mockUsers
     }
   },
 
   getters: {
     isAdmin: (state) => state.user?.role === 'admin',
     isUser: (state) => state.user?.role === 'user',
-    currentUser: (state) => state.user
+    currentUser: (state) => state.user,
+    getAllUsers: (state) => state.users
   },
 
   actions: {

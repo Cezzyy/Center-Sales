@@ -1,40 +1,20 @@
 <script setup>
+import { useAuthStore } from '@/stores/authStore'
 import { ref, computed, watch } from 'vue'
 import { useActivityLog } from '@/composables/useActivityLog'
 
-// Initialize activity logger
+// Initialize stores and composables
+const authStore = useAuthStore()
 const { logUserAction } = useActivityLog()
 
-const mockUsers = [
-  {
-    id: '1',
-    username: 'john_doe',
-    email: 'john@example.com',
-    role: 'admin',
-    createdAt: new Date('2024-01-01'),
-  },
-  {
-    id: '2',
-    username: 'jane_smith',
-    email: 'jane@example.com',
-    role: 'manager',
-    createdAt: new Date('2024-01-02'),
-  },
-  {
-    id: '3',
-    username: 'bob_wilson',
-    email: 'bob@example.com',
-    role: 'user',
-    createdAt: new Date('2024-01-03'),
-  },
-]
-
 // State Management
-const users = ref([...mockUsers])
+const users = ref(authStore.getAllUsers || [])
 const error = ref(null)
 const searchQuery = ref('')
 const selectedRole = ref('')
 const showModal = ref(false)
+const showDeleteModal = ref(false)
+const userToDelete = ref(null)
 const currentPage = ref(1)
 const itemsPerPage = ref(10)
 
@@ -43,6 +23,7 @@ const userForm = ref({
   username: '',
   email: '',
   role: 'user',
+  position: ''
 })
 
 const formErrors = ref({})
@@ -108,69 +89,82 @@ const addUser = async () => {
   if (!validateForm()) return
 
   try {
+    // Add user to store
     const newUser = {
-      id: crypto.randomUUID(),
+      id: Date.now(),  // temporary ID generation
       ...userForm.value,
-      createdAt: new Date(),
+      createdAt: new Date()
     }
-
-    users.value.push(newUser)
-
+    
+    authStore.users.push(newUser)
+    users.value = [...authStore.getAllUsers]
+    
     // Log the action
-    await logUserAction('CREATE_USER', `Created new user: ${newUser.username}`, newUser.id)
-
-    showModal.value = false
+    await logUserAction('add_user', { userId: newUser.id, username: newUser.username })
+    
+    closeModal()
     resetForm()
-  } catch (e) {
-    error.value = 'Failed to add user'
-    console.error('Error adding user:', e)
+  } catch (err) {
+    error.value = err.message
   }
 }
 
 const editUser = async (userId) => {
+  if (!validateForm()) return
+
   try {
-    const userIndex = users.value.findIndex((u) => u.id === userId)
+    const userIndex = authStore.users.findIndex(u => u.id === userId)
     if (userIndex === -1) throw new Error('User not found')
 
-    if (!validateForm()) return
-
-    const oldUser = { ...users.value[userIndex] }
-    users.value[userIndex] = {
-      ...users.value[userIndex],
-      ...userForm.value,
+    // Update user in store
+    authStore.users[userIndex] = {
+      ...authStore.users[userIndex],
+      ...userForm.value
     }
+    users.value = [...authStore.getAllUsers]
 
     // Log the action
-    await logUserAction(
-      'UPDATE_USER',
-      `Updated user ${oldUser.username}: Role changed from ${oldUser.role} to ${userForm.value.role}`,
-      userId,
-    )
+    await logUserAction('edit_user', { userId, username: userForm.value.username })
 
-    showModal.value = false
+    closeModal()
     resetForm()
-  } catch (e) {
-    error.value = 'Failed to edit user'
-    console.error('Error editing user:', e)
+  } catch (err) {
+    error.value = err.message
   }
 }
 
-const deleteUser = async (userId) => {
+const confirmDelete = async () => {
+  if (!userToDelete.value) return
+  
   try {
-    if (!confirm('Are you sure you want to delete this user?')) return
-
-    const userIndex = users.value.findIndex((u) => u.id === userId)
+    const userIndex = authStore.users.findIndex(u => u.id === userToDelete.value.id)
     if (userIndex === -1) throw new Error('User not found')
 
-    const deletedUser = users.value[userIndex]
-    users.value = users.value.filter((user) => user.id !== userId)
+    const username = authStore.users[userIndex].username
+    
+    // Remove user from store
+    authStore.users.splice(userIndex, 1)
+    users.value = [...authStore.getAllUsers]
 
     // Log the action
-    await logUserAction('DELETE_USER', `Deleted user: ${deletedUser.username}`, userId)
-  } catch (e) {
-    error.value = 'Failed to delete user'
-    console.error('Error deleting user:', e)
+    await logUserAction('delete_user', { userId: userToDelete.value.id, username })
+    
+    // Close modal and reset
+    showDeleteModal.value = false
+    userToDelete.value = null
+  } catch (err) {
+    error.value = err.message
   }
+}
+
+const initiateDelete = (user) => {
+  userToDelete.value = user
+  showDeleteModal.value = true
+}
+
+const cancelDelete = () => {
+  userToDelete.value = null
+  showDeleteModal.value = false
 }
 
 // UI Helper Functions
@@ -179,6 +173,7 @@ const resetForm = () => {
     username: '',
     email: '',
     role: 'user',
+    position: ''
   }
   formErrors.value = {}
 }
@@ -289,7 +284,7 @@ watch([searchQuery, selectedRole], () => {
               </button>
               <button
                 class="user-management__action-btn user-management__action-btn--delete"
-                @click="deleteUser(user.id)"
+                @click="initiateDelete(user)"
               >
                 Delete
               </button>
@@ -365,6 +360,10 @@ watch([searchQuery, selectedRole], () => {
               {{ formErrors.role }}
             </span>
           </div>
+          <div class="user-management__form-group">
+            <label>Position:</label>
+            <input type="text" v-model="userForm.position" />
+          </div>
           <div class="user-management__form-actions">
             <button type="submit" class="user-management__submit-btn">
               {{ userForm.id ? 'Update' : 'Save' }}
@@ -374,6 +373,30 @@ watch([searchQuery, selectedRole], () => {
             </button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div v-if="showDeleteModal" class="user-management__modal">
+      <div class="user-management__modal-content delete-confirmation">
+        <h2 class="user-management__modal-title">Confirm Delete</h2>
+        <p class="delete-confirmation__message">
+          Are you sure you want to delete user "{{ userToDelete?.username }}"? This action cannot be undone.
+        </p>
+        <div class="user-management__form-actions">
+          <button 
+            @click="confirmDelete" 
+            class="user-management__delete-btn"
+          >
+            Delete
+          </button>
+          <button 
+            @click="cancelDelete" 
+            class="user-management__cancel-btn"
+          >
+            Cancel
+          </button>
+        </div>
       </div>
     </div>
   </section>
@@ -619,6 +642,47 @@ watch([searchQuery, selectedRole], () => {
 .user-management__submit-btn:hover,
 .user-management__cancel-btn:hover {
   opacity: 0.9;
+}
+
+.delete-confirmation {
+  max-width: 400px !important;
+}
+
+.delete-confirmation__message {
+  margin: 1rem 0;
+  color: #666;
+  text-align: center;
+}
+
+.user-management__delete-btn {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.user-management__delete-btn:hover {
+  background-color: #c82333;
+}
+
+.user-management__cancel-btn {
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  margin-left: 0.5rem;
+  transition: background-color 0.2s;
+}
+
+.user-management__cancel-btn:hover {
+  background-color: #5a6268;
 }
 
 /* Responsive Design */
