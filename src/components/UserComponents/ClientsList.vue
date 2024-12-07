@@ -2,29 +2,29 @@
 import { defineAsyncComponent, computed, ref } from 'vue'
 import { useClientStore } from '@/stores/clientStore'
 import { storeToRefs } from 'pinia'
+import { useActivityLog } from '@/composables/useActivityLog'
+
+// Initialize activity logger
+const { logClientAction } = useActivityLog()
 
 // Lazy load modals for better initial load performance
-const AddClientModal = defineAsyncComponent(() => 
-  import('../UserSideModals/AddClientModal.vue')
-)
-const EditClientModal = defineAsyncComponent(() => 
-  import('../UserSideModals/EditClientModal.vue')
-)
-const DeleteConfirmationModal = defineAsyncComponent(() => 
-  import('../UserSideModals/DeleteConfirmationModal.vue')
+const AddClientModal = defineAsyncComponent(() => import('../UserSideModals/AddClientModal.vue'))
+const EditClientModal = defineAsyncComponent(() => import('../UserSideModals/EditClientModal.vue'))
+const DeleteConfirmationModal = defineAsyncComponent(
+  () => import('../UserSideModals/DeleteConfirmationModal.vue'),
 )
 
 // Initialize store
 const store = useClientStore()
 
 // Destructure only what we need from the store
-const { 
+const {
   searchQuery,
   filteredClients,
   currentPage,
   isModalOpen,
   showEditClientModal,
-  selectedClient 
+  selectedClient,
 } = storeToRefs(store)
 
 // Add state for delete confirmation
@@ -45,6 +45,14 @@ const handleSearch = (event) => {
 const handleAddClient = async (clientData) => {
   try {
     await store.addClient(clientData)
+
+    // Log the client creation
+    await logClientAction(
+      'CREATE_CLIENT',
+      `Created new client: ${clientData.firstName} ${clientData.lastName} from ${clientData.company}`,
+      clientData.id,
+    )
+
     store.closeModal()
   } catch (error) {
     console.error('Failed to add client:', error)
@@ -53,7 +61,38 @@ const handleAddClient = async (clientData) => {
 
 const handleEditClient = async (clientData) => {
   try {
+    const oldClient = { ...store.getClientById(clientData.id) }
     await store.updateClient(clientData)
+
+    // Log the client update with meaningful changes
+    const changes = []
+    if (
+      oldClient.firstName !== clientData.firstName ||
+      oldClient.lastName !== clientData.lastName
+    ) {
+      changes.push(
+        `name from ${oldClient.firstName} ${oldClient.lastName} to ${clientData.firstName} ${clientData.lastName}`,
+      )
+    }
+    if (oldClient.company !== clientData.company) {
+      changes.push(`company from ${oldClient.company} to ${clientData.company}`)
+    }
+    if (oldClient.email !== clientData.email) {
+      changes.push(`email from ${oldClient.email} to ${clientData.email}`)
+    }
+    if (oldClient.phone !== clientData.phone) {
+      changes.push(`phone from ${oldClient.phone} to ${clientData.phone}`)
+    }
+    if (oldClient.address !== clientData.address) {
+      changes.push(`address from ${oldClient.address} to ${clientData.address}`)
+    }
+
+    await logClientAction(
+      'UPDATE_CLIENT',
+      `Updated client: ${oldClient.firstName} ${oldClient.lastName} - Changed ${changes.join(', ')}`,
+      clientData.id,
+    )
+
     store.closeEditModal()
   } catch (error) {
     console.error('Failed to update client:', error)
@@ -67,7 +106,16 @@ const handleDeleteClient = async (client) => {
 
 const confirmDelete = async () => {
   try {
-    await store.deleteClient(clientToDelete.value.id)
+    const client = clientToDelete.value
+    await store.deleteClient(client.id)
+
+    // Log the client deletion
+    await logClientAction(
+      'DELETE_CLIENT',
+      `Deleted client: ${client.firstName} ${client.lastName} from ${client.company}`,
+      client.id,
+    )
+
     showDeleteModal.value = false
     clientToDelete.value = null
   } catch (error) {
@@ -103,8 +151,8 @@ const goToPreviousPage = () => {
       <div class="section-header">
         <h2 class="section-title">Clients List</h2>
         <div class="search-container">
-          <input 
-            type="text" 
+          <input
+            type="text"
             :value="searchQuery"
             @input="handleSearch"
             placeholder="Search clients..."
@@ -119,8 +167,8 @@ const goToPreviousPage = () => {
     </div>
 
     <!-- Modals -->
-    <AddClientModal 
-      :isModalOpen="isModalOpen" 
+    <AddClientModal
+      :isModalOpen="isModalOpen"
       @close="store.closeModal"
       @add-client="handleAddClient"
     />
@@ -159,7 +207,7 @@ const goToPreviousPage = () => {
           <tr v-for="client in displayedClients" :key="client.id">
             <td>
               <div class="profile-pic">
-                <img 
+                <img
                   :src="client.profilePicture"
                   :alt="`${client.firstName} ${client.lastName}`"
                   loading="lazy"
@@ -173,15 +221,15 @@ const goToPreviousPage = () => {
             <td>{{ client.email }}</td>
             <td>{{ client.phone }}</td>
             <td class="actions">
-              <button 
-                class="edit-btn" 
+              <button
+                class="edit-btn"
                 @click="store.editClient(client)"
                 :title="`Edit ${client.firstName} ${client.lastName}`"
               >
                 Edit
               </button>
-              <button 
-                class="delete-btn" 
+              <button
+                class="delete-btn"
                 @click="handleDeleteClient(client)"
                 :title="`Delete ${client.firstName} ${client.lastName}`"
               >
@@ -191,7 +239,7 @@ const goToPreviousPage = () => {
           </tr>
         </tbody>
       </table>
-      
+
       <!-- No Results Message -->
       <div v-else class="no-results">
         <div class="no-results-content">
@@ -203,9 +251,9 @@ const goToPreviousPage = () => {
 
       <!-- Pagination -->
       <div class="pagination" v-if="hasClients">
-        <button 
-          class="page-btn" 
-          @click="goToPreviousPage" 
+        <button
+          class="page-btn"
+          @click="goToPreviousPage"
           :disabled="currentPage === 1"
           title="Previous page"
         >

@@ -1,16 +1,22 @@
 <script setup>
-import { defineAsyncComponent } from 'vue';
-import { useOrderInvoiceStore } from '@/stores/salesStore';
-import { storeToRefs } from 'pinia';
+import { defineAsyncComponent } from 'vue'
+import { useOrderInvoiceStore } from '@/stores/salesStore'
+import { storeToRefs } from 'pinia'
+import { useActivityLog } from '@/composables/useActivityLog'
 
-const AddSalesModal = defineAsyncComponent(() => import('../UserSideModals/AddSalesModal.vue'));
-const AddInvoiceModal = defineAsyncComponent(() => import('../UserSideModals/AddInvoiceModal.vue'));
-const ViewOrderModal = defineAsyncComponent(() => import('../UserSideModals/ViewOrderModal.vue'));
-const EditOrderModal = defineAsyncComponent(() => import('../UserSideModals/EditOrderModal.vue'));
-const EditInvoiceModal = defineAsyncComponent(() => import('../UserSideModals/EditInvoiceModal.vue'));
+const AddSalesModal = defineAsyncComponent(() => import('../UserSideModals/AddSalesModal.vue'))
+const AddInvoiceModal = defineAsyncComponent(() => import('../UserSideModals/AddInvoiceModal.vue'))
+const ViewOrderModal = defineAsyncComponent(() => import('../UserSideModals/ViewOrderModal.vue'))
+const EditOrderModal = defineAsyncComponent(() => import('../UserSideModals/EditOrderModal.vue'))
+const EditInvoiceModal = defineAsyncComponent(
+  () => import('../UserSideModals/EditInvoiceModal.vue'),
+)
+
+// Initialize activity logger
+const { logOrderAction, logInvoiceAction } = useActivityLog()
 
 // Initialize store
-const store = useOrderInvoiceStore();
+const store = useOrderInvoiceStore()
 
 // Destructure state and getters with storeToRefs for reactivity
 const {
@@ -30,89 +36,137 @@ const {
   paginatedInvoices,
   totalOrderPages,
   totalInvoicePages,
-} = storeToRefs(store);
-
-// Destructure getters with storeToRefs
-const {
-} = storeToRefs(store);
+} = storeToRefs(store)
 
 // Add computed property for formatted dates
 const formatDate = (dateString) => {
-  if (!dateString) return '';
-  const date = new Date(dateString);
+  if (!dateString) return ''
+  const date = new Date(dateString)
   return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
-    day: 'numeric'
-  });
-};
+    day: 'numeric',
+  })
+}
 
 // Calculate days overdue
 const calculateDaysOverdue = (dueDate) => {
-  if (!dueDate) return 0;
-  
-  const today = new Date();
-  today.setHours(0, 0, 0, 0); // Reset time part for accurate day calculation
-  
-  const due = new Date(dueDate);
-  due.setHours(0, 0, 0, 0);
-  
-  const diffTime = today - due;
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
-  return diffDays > 0 ? diffDays : 0; // Only return positive values
-};
+  if (!dueDate) return 0
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0) // Reset time part for accurate day calculation
+
+  const due = new Date(dueDate)
+  due.setHours(0, 0, 0, 0)
+
+  const diffTime = today - due
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
+  return diffDays > 0 ? diffDays : 0 // Only return positive values
+}
 
 // Modal handlers
-const openAddSalesModal = () => store.openModal('AddSales');
-const closeAddSalesModal = () => store.closeModal('AddSales');
-const openAddInvoiceModal = () => store.openModal('AddInvoice');
-const closeAddInvoiceModal = () => store.closeModal('AddInvoice');
+const openAddSalesModal = () => store.openModal('AddSales')
+const closeAddSalesModal = () => store.closeModal('AddSales')
+const openAddInvoiceModal = () => store.openModal('AddInvoice')
+// const closeAddInvoiceModal = () => store.closeModal('AddInvoice')
 const openViewOrderModal = (order) => {
-  viewOrder.value = order;
-  store.openModal('ViewOrder');
-};
-const closeViewOrderModal = () => store.closeModal('ViewOrder');
+  viewOrder.value = order
+  store.openModal('ViewOrder')
+}
+const closeViewOrderModal = () => store.closeModal('ViewOrder')
 const openEditOrderModal = (order) => {
-  editOrder.value = { ...order };
-  store.openModal('EditOrder');
-};
-const closeEditOrderModal = () => store.closeModal('EditOrder');
-const openEditInvoiceModal = (invoice) => {
-  editInvoice.value = { ...invoice };
-  store.openModal('EditInvoice');
-};
-const closeEditInvoiceModal = () => store.closeModal('EditInvoice');
+  editOrder.value = { ...order }
+  store.openModal('EditOrder')
+}
+// const closeEditOrderModal = () => store.closeModal('EditOrder')
+// const openEditInvoiceModal = (invoice) => {
+//   editInvoice.value = { ...invoice }
+//   store.openModal('EditInvoice')
+// }
+// const closeEditInvoiceModal = () => store.closeModal('EditInvoice')
 
 // Form submission handlers
-const handleEditOrderSubmit = (updatedOrder) => {
-  store.handleEditOrderSubmit(updatedOrder);
-};
+const handleEditOrderSubmit = async (updatedOrder) => {
+  const oldOrder = { ...store.getOrderById(updatedOrder.id) }
+  await store.handleEditOrderSubmit(updatedOrder)
 
-const handleAddInvoiceSubmit = (updatedInvoice) => {
-  store.handleAddInvoiceSubmit(updatedInvoice);
-};
+  // Log order update with changes
+  const changes = []
+  if (oldOrder.customerName !== updatedOrder.customerName) {
+    changes.push(`customer from ${oldOrder.customerName} to ${updatedOrder.customerName}`)
+  }
+  if (oldOrder.productName !== updatedOrder.productName) {
+    changes.push(`product from ${oldOrder.productName} to ${updatedOrder.productName}`)
+  }
+  if (oldOrder.quantity !== updatedOrder.quantity) {
+    changes.push(`quantity from ${oldOrder.quantity} to ${updatedOrder.quantity}`)
+  }
+  if (oldOrder.amount !== updatedOrder.amount) {
+    changes.push(`amount from ${oldOrder.amount} to ${updatedOrder.amount}`)
+  }
+  if (oldOrder.status !== updatedOrder.status) {
+    changes.push(`status from ${oldOrder.status} to ${updatedOrder.status}`)
+  }
 
-const handleAddSalesSubmit = (salesData) => {
-  store.handleAddSalesSubmit(salesData);
-};
+  await logOrderAction(
+    'UPDATE_ORDER',
+    `Updated order #${updatedOrder.id} - Changed ${changes.join(', ')}`,
+    updatedOrder.id,
+    { changes },
+  )
+}
+
+const handleAddInvoiceSubmit = async (newInvoice) => {
+  await store.handleAddInvoiceSubmit(newInvoice)
+
+  await logInvoiceAction(
+    'CREATE_INVOICE',
+    `Created new invoice for order #${newInvoice.orderId} - Amount: ${newInvoice.amount}, Due: ${formatDate(newInvoice.dueDate)}`,
+    newInvoice.id,
+    { orderId: newInvoice.orderId },
+  )
+}
+
+const handleAddSalesSubmit = async (salesData) => {
+  await store.handleAddSalesSubmit(salesData)
+
+  await logOrderAction(
+    'CREATE_ORDER',
+    `Created new order - Customer: ${salesData.customerName}, Product: ${salesData.productName}, Amount: ${salesData.amount}`,
+    salesData.id,
+    {
+      customerName: salesData.customerName,
+      productName: salesData.productName,
+      amount: salesData.amount,
+    },
+  )
+}
 
 // Pagination handlers
-const goToPageOrders = (page) => store.goToPage('orders', page);
-const goToPreviousPageOrders = () => store.goToPreviousPage('orders');
-const goToNextPageOrders = () => store.goToNextPage('orders');
-const goToPageInvoices = (page) => store.goToPage('invoices', page);
-const goToPreviousPageInvoices = () => store.goToPreviousPage('invoices');
-const goToNextPageInvoices = () => store.goToNextPage('invoices');
+const goToPageOrders = (page) => store.goToPage('orders', page)
+const goToPreviousPageOrders = () => store.goToPreviousPage('orders')
+const goToNextPageOrders = () => store.goToNextPage('orders')
+const goToPageInvoices = (page) => store.goToPage('invoices', page)
+const goToPreviousPageInvoices = () => store.goToPreviousPage('invoices')
+const goToNextPageInvoices = () => store.goToNextPage('invoices')
 
 // Filter reset handlers
-const resetOrderFilters = () => store.resetFilters('orders');
-const resetInvoiceFilters = () => store.resetFilters('invoices');
+const resetOrderFilters = () => store.resetFilters('orders')
+const resetInvoiceFilters = () => store.resetFilters('invoices')
 
 // Mark invoice as paid
-const markAsPaid = (invoiceId) => {
-  store.markInvoiceAsPaid(invoiceId);
-};
+const markAsPaid = async (invoiceId) => {
+  const invoice = store.getInvoiceById(invoiceId)
+  await store.markInvoiceAsPaid(invoiceId)
+
+  await logInvoiceAction(
+    'UPDATE_INVOICE_STATUS',
+    `Marked invoice #${invoiceId} as paid - Order #${invoice.orderId}`,
+    invoiceId,
+    { status: 'paid', orderId: invoice.orderId },
+  )
+}
 </script>
 
 <template>
@@ -128,19 +182,11 @@ const markAsPaid = (invoiceId) => {
       <div class="filter-section">
         <div class="filter-group">
           <label>Date From:</label>
-          <input
-            type="date"
-            v-model="orderFilters.dateFrom"
-            class="filter-input"
-          />
+          <input type="date" v-model="orderFilters.dateFrom" class="filter-input" />
         </div>
         <div class="filter-group">
           <label>Date To:</label>
-          <input
-            type="date"
-            v-model="orderFilters.dateTo"
-            class="filter-input"
-          />
+          <input type="date" v-model="orderFilters.dateTo" class="filter-input" />
         </div>
         <div class="filter-group">
           <label>Order ID:</label>
@@ -178,9 +224,7 @@ const markAsPaid = (invoiceId) => {
             <option value="cancelled">Cancelled</option>
           </select>
         </div>
-        <button class="btn-reset" @click="resetOrderFilters">
-          Reset Filters
-        </button>
+        <button class="btn-reset" @click="resetOrderFilters">Reset Filters</button>
       </div>
 
       <!-- Orders Table -->
@@ -214,16 +258,10 @@ const markAsPaid = (invoiceId) => {
                 </td>
                 <td>
                   <div class="action-buttons">
-                    <button
-                      class="btn-action btn-view"
-                      @click="openViewOrderModal(order)"
-                    >
+                    <button class="btn-action btn-view" @click="openViewOrderModal(order)">
                       View
                     </button>
-                    <button
-                      class="btn-action btn-edit"
-                      @click="openEditOrderModal(order)"
-                    >
+                    <button class="btn-action btn-edit" @click="openEditOrderModal(order)">
                       Edit
                     </button>
                   </div>
@@ -297,9 +335,7 @@ const markAsPaid = (invoiceId) => {
             class="filter-input"
           />
         </div>
-        <button class="btn-reset" @click="resetInvoiceFilters">
-          Reset Filters
-        </button>
+        <button class="btn-reset" @click="resetInvoiceFilters">Reset Filters</button>
       </div>
 
       <!-- Invoices Table -->
@@ -318,23 +354,30 @@ const markAsPaid = (invoiceId) => {
           </thead>
           <tbody>
             <template v-if="paginatedInvoices.length">
-              <tr v-for="invoice in paginatedInvoices" 
-                  :key="invoice.invoiceId"
-                  :class="{ 'paid-row': invoice.isPaid }">
+              <tr
+                v-for="invoice in paginatedInvoices"
+                :key="invoice.invoiceId"
+                :class="{ 'paid-row': invoice.isPaid }"
+              >
                 <td class="order-id">{{ invoice.invoiceId }}</td>
                 <td>{{ invoice.customer }}</td>
                 <td class="amount-cell">₱{{ invoice.amount.toLocaleString() }}</td>
                 <td class="date-cell">{{ formatDate(invoice.dueDate) }}</td>
-                <td :class="{ 'overdue': !invoice.isPaid && calculateDaysOverdue(invoice.dueDate) > 0 }">
-                  {{ invoice.isPaid 
-                    ? 'Paid' 
-                    : (calculateDaysOverdue(invoice.dueDate) > 0 
-                      ? `${calculateDaysOverdue(invoice.dueDate)} days overdue` 
-                      : 'Not overdue') 
+                <td
+                  :class="{ overdue: !invoice.isPaid && calculateDaysOverdue(invoice.dueDate) > 0 }"
+                >
+                  {{
+                    invoice.isPaid
+                      ? 'Paid'
+                      : calculateDaysOverdue(invoice.dueDate) > 0
+                        ? `${calculateDaysOverdue(invoice.dueDate)} days overdue`
+                        : 'Not overdue'
                   }}
                 </td>
                 <td>
-                  <span :class="['status-badge', invoice.isPaid ? 'status-paid' : 'status-pending']">
+                  <span
+                    :class="['status-badge', invoice.isPaid ? 'status-paid' : 'status-pending']"
+                  >
                     {{ invoice.isPaid ? 'Paid' : 'Pending' }}
                   </span>
                 </td>
@@ -436,7 +479,8 @@ const markAsPaid = (invoiceId) => {
 /* Base Styles */
 .sales-tracking {
   padding: 2rem;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell,
+    sans-serif;
   color: #333;
 }
 
@@ -583,7 +627,9 @@ const markAsPaid = (invoiceId) => {
   font-size: 14px;
   border-radius: 4px;
   cursor: pointer;
-  transition: background-color 0.2s, color 0.2s;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
 }
 
 .btn-reset:hover {
