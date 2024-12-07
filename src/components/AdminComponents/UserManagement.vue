@@ -1,190 +1,228 @@
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch } from 'vue'
+import { useActivityLog } from '@/composables/useActivityLog'
+
+// Initialize activity logger
+const { logUserAction } = useActivityLog()
 
 const mockUsers = [
-  { id: '1', username: 'john_doe', email: 'john@example.com', role: 'admin', createdAt: new Date('2024-01-01') },
-  { id: '2', username: 'jane_smith', email: 'jane@example.com', role: 'manager', createdAt: new Date('2024-01-02') },
-  { id: '3', username: 'bob_wilson', email: 'bob@example.com', role: 'user', createdAt: new Date('2024-01-03') }
-];
+  {
+    id: '1',
+    username: 'john_doe',
+    email: 'john@example.com',
+    role: 'admin',
+    createdAt: new Date('2024-01-01'),
+  },
+  {
+    id: '2',
+    username: 'jane_smith',
+    email: 'jane@example.com',
+    role: 'manager',
+    createdAt: new Date('2024-01-02'),
+  },
+  {
+    id: '3',
+    username: 'bob_wilson',
+    email: 'bob@example.com',
+    role: 'user',
+    createdAt: new Date('2024-01-03'),
+  },
+]
 
 // State Management
-const users = ref([...mockUsers]);
-const error = ref(null);
-const searchQuery = ref('');
-const selectedRole = ref('');
-const showModal = ref(false);
-const currentPage = ref(1);
-const itemsPerPage = ref(10);
+const users = ref([...mockUsers])
+const error = ref(null)
+const searchQuery = ref('')
+const selectedRole = ref('')
+const showModal = ref(false)
+const currentPage = ref(1)
+const itemsPerPage = ref(10)
 
 // Form Management
 const userForm = ref({
   username: '',
   email: '',
-  role: 'user'
-});
+  role: 'user',
+})
 
-const formErrors = ref({});
+const formErrors = ref({})
 
 // Computed Properties
 const filteredUsers = computed(() => {
-  return users.value.filter(user => {
-    const matchesSearch = 
+  return users.value.filter((user) => {
+    const matchesSearch =
       user.username.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.value.toLowerCase());
-    const matchesRole = !selectedRole.value || user.role === selectedRole.value;
-    return matchesSearch && matchesRole;
-  });
-});
+      user.email.toLowerCase().includes(searchQuery.value.toLowerCase())
+    const matchesRole = !selectedRole.value || user.role === selectedRole.value
+    return matchesSearch && matchesRole
+  })
+})
 
 const paginatedUsers = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage.value;
-  const end = start + itemsPerPage.value;
-  return filteredUsers.value.slice(start, end);
-});
+  const start = (currentPage.value - 1) * itemsPerPage.value
+  const end = start + itemsPerPage.value
+  return filteredUsers.value.slice(start, end)
+})
 
 const totalPages = computed(() => {
-  return Math.ceil(filteredUsers.value.length / itemsPerPage.value);
-});
+  return Math.ceil(filteredUsers.value.length / itemsPerPage.value)
+})
 
 const totalUsers = computed(() => {
-  return users.value.length;
-});
+  return users.value.length
+})
 
 // Form Validation
 const validateForm = () => {
-  const errors = {};
-  let isValid = true;
+  const errors = {}
+  let isValid = true
 
   if (!userForm.value.username.trim()) {
-    errors.username = 'Username is required';
-    isValid = false;
+    errors.username = 'Username is required'
+    isValid = false
   } else if (userForm.value.username.length < 3) {
-    errors.username = 'Username must be at least 3 characters';
-    isValid = false;
+    errors.username = 'Username must be at least 3 characters'
+    isValid = false
   }
 
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   if (!userForm.value.email.trim()) {
-    errors.email = 'Email is required';
-    isValid = false;
+    errors.email = 'Email is required'
+    isValid = false
   } else if (!emailRegex.test(userForm.value.email)) {
-    errors.email = 'Invalid email format';
-    isValid = false;
+    errors.email = 'Invalid email format'
+    isValid = false
   }
 
   if (!userForm.value.role) {
-    errors.role = 'Role is required';
-    isValid = false;
+    errors.role = 'Role is required'
+    isValid = false
   }
 
-  formErrors.value = errors;
-  return isValid;
-};
+  formErrors.value = errors
+  return isValid
+}
 
 // User Management Functions
-const addUser = () => {
-  if (!validateForm()) return;
+const addUser = async () => {
+  if (!validateForm()) return
 
   try {
     const newUser = {
       id: crypto.randomUUID(),
       ...userForm.value,
-      createdAt: new Date()
-    };
+      createdAt: new Date(),
+    }
 
-    users.value.push(newUser);
-    showModal.value = false;
-    resetForm();
+    users.value.push(newUser)
+
+    // Log the action
+    await logUserAction('CREATE_USER', `Created new user: ${newUser.username}`, newUser.id)
+
+    showModal.value = false
+    resetForm()
   } catch (e) {
-    error.value = 'Failed to add user';
-    console.error('Error adding user:', e);
+    error.value = 'Failed to add user'
+    console.error('Error adding user:', e)
   }
-};
+}
 
-const editUser = (userId) => {
+const editUser = async (userId) => {
   try {
-    const userIndex = users.value.findIndex(u => u.id === userId);
-    if (userIndex === -1) throw new Error('User not found');
+    const userIndex = users.value.findIndex((u) => u.id === userId)
+    if (userIndex === -1) throw new Error('User not found')
 
-    if (!validateForm()) return;
+    if (!validateForm()) return
 
+    const oldUser = { ...users.value[userIndex] }
     users.value[userIndex] = {
       ...users.value[userIndex],
-      ...userForm.value
-    };
+      ...userForm.value,
+    }
 
-    showModal.value = false;
-    resetForm();
+    // Log the action
+    await logUserAction(
+      'UPDATE_USER',
+      `Updated user ${oldUser.username}: Role changed from ${oldUser.role} to ${userForm.value.role}`,
+      userId,
+    )
+
+    showModal.value = false
+    resetForm()
   } catch (e) {
-    error.value = 'Failed to edit user';
-    console.error('Error editing user:', e);
+    error.value = 'Failed to edit user'
+    console.error('Error editing user:', e)
   }
-};
+}
 
-const deleteUser = (userId) => {
+const deleteUser = async (userId) => {
   try {
-    if (!confirm('Are you sure you want to delete this user?')) return;
+    if (!confirm('Are you sure you want to delete this user?')) return
 
-    const userIndex = users.value.findIndex(u => u.id === userId);
-    if (userIndex === -1) throw new Error('User not found');
+    const userIndex = users.value.findIndex((u) => u.id === userId)
+    if (userIndex === -1) throw new Error('User not found')
 
-    users.value = users.value.filter(user => user.id !== userId);
+    const deletedUser = users.value[userIndex]
+    users.value = users.value.filter((user) => user.id !== userId)
+
+    // Log the action
+    await logUserAction('DELETE_USER', `Deleted user: ${deletedUser.username}`, userId)
   } catch (e) {
-    error.value = 'Failed to delete user';
-    console.error('Error deleting user:', e);
+    error.value = 'Failed to delete user'
+    console.error('Error deleting user:', e)
   }
-};
+}
 
 // UI Helper Functions
 const resetForm = () => {
   userForm.value = {
     username: '',
     email: '',
-    role: 'user'
-  };
-  formErrors.value = {};
-};
+    role: 'user',
+  }
+  formErrors.value = {}
+}
 
 const openModal = (user = null) => {
   if (user) {
-    userForm.value = { ...user };
+    userForm.value = { ...user }
   } else {
-    resetForm();
+    resetForm()
   }
-  showModal.value = true;
-};
+  showModal.value = true
+}
 
 const closeModal = () => {
-  showModal.value = false;
-  resetForm();
-};
+  showModal.value = false
+  resetForm()
+}
 
 const handlePageChange = (page) => {
   if (page >= 1 && page <= totalPages.value) {
-    currentPage.value = page;
+    currentPage.value = page
   }
-};
+}
 
 // Search and Filter Handlers
 const handleSearch = (event) => {
-  searchQuery.value = event.target.value;
-  currentPage.value = 1;
-};
+  searchQuery.value = event.target.value
+  currentPage.value = 1
+}
 
 const handleFilterChange = (event) => {
-  selectedRole.value = event.target.value;
-  currentPage.value = 1;
-};
+  selectedRole.value = event.target.value
+  currentPage.value = 1
+}
 
 // Error Handling
 const clearError = () => {
-  error.value = null;
-};
+  error.value = null
+}
 
 // Watchers
 watch([searchQuery, selectedRole], () => {
-  currentPage.value = 1;
-});
+  currentPage.value = 1
+})
 </script>
 
 <template>
@@ -202,30 +240,21 @@ watch([searchQuery, selectedRole], () => {
     <!-- Controls Section -->
     <div class="user-management__controls">
       <div class="user-management__search-filter">
-        <input 
-          type="text" 
-          placeholder="Search users..." 
+        <input
+          type="text"
+          placeholder="Search users..."
           class="user-management__search"
           v-model="searchQuery"
           @input="handleSearch"
-        >
-        <select 
-          class="user-management__filter"
-          v-model="selectedRole"
-          @change="handleFilterChange"
-        >
+        />
+        <select class="user-management__filter" v-model="selectedRole" @change="handleFilterChange">
           <option value="">All Roles</option>
           <option value="admin">Admin</option>
           <option value="manager">Manager</option>
           <option value="user">User</option>
         </select>
       </div>
-      <button 
-        class="user-management__add-btn"
-        @click="openModal()"
-      >
-        Add New User
-      </button>
+      <button class="user-management__add-btn" @click="openModal()">Add New User</button>
     </div>
 
     <!-- User Count -->
@@ -252,13 +281,13 @@ watch([searchQuery, selectedRole], () => {
               <span class="user-management__role">{{ user.role }}</span>
             </td>
             <td class="user-management__actions">
-              <button 
+              <button
                 class="user-management__action-btn user-management__action-btn--edit"
                 @click="openModal(user)"
               >
                 Edit
               </button>
-              <button 
+              <button
                 class="user-management__action-btn user-management__action-btn--delete"
                 @click="deleteUser(user.id)"
               >
@@ -272,14 +301,14 @@ watch([searchQuery, selectedRole], () => {
 
     <!-- Pagination -->
     <nav v-if="totalPages > 1" class="user-management__pagination">
-      <button 
+      <button
         class="user-management__page-btn"
         @click="handlePageChange(currentPage - 1)"
         :disabled="currentPage === 1"
       >
         &laquo;
       </button>
-      <button 
+      <button
         v-for="page in totalPages"
         :key="page"
         class="user-management__page-btn"
@@ -288,7 +317,7 @@ watch([searchQuery, selectedRole], () => {
       >
         {{ page }}
       </button>
-      <button 
+      <button
         class="user-management__page-btn"
         @click="handlePageChange(currentPage + 1)"
         :disabled="currentPage === totalPages"
@@ -303,35 +332,31 @@ watch([searchQuery, selectedRole], () => {
         <h2 class="user-management__modal-title">
           {{ userForm.id ? 'Edit User' : 'Add New User' }}
         </h2>
-        <form class="user-management__form" @submit.prevent="userForm.id ? editUser(userForm.id) : addUser()">
+        <form
+          class="user-management__form"
+          @submit.prevent="userForm.id ? editUser(userForm.id) : addUser()"
+        >
           <div class="user-management__form-group">
             <label>Username:</label>
-            <input 
-              type="text" 
+            <input
+              type="text"
               v-model="userForm.username"
-              :class="{ 'error': formErrors.username }"
-            >
+              :class="{ error: formErrors.username }"
+            />
             <span v-if="formErrors.username" class="error-message">
               {{ formErrors.username }}
             </span>
           </div>
           <div class="user-management__form-group">
             <label>Email:</label>
-            <input 
-              type="email" 
-              v-model="userForm.email"
-              :class="{ 'error': formErrors.email }"
-            >
+            <input type="email" v-model="userForm.email" :class="{ error: formErrors.email }" />
             <span v-if="formErrors.email" class="error-message">
               {{ formErrors.email }}
             </span>
           </div>
           <div class="user-management__form-group">
             <label>Role:</label>
-            <select 
-              v-model="userForm.role"
-              :class="{ 'error': formErrors.role }"
-            >
+            <select v-model="userForm.role" :class="{ error: formErrors.role }">
               <option value="admin">Admin</option>
               <option value="manager">Manager</option>
               <option value="user">User</option>
@@ -344,11 +369,7 @@ watch([searchQuery, selectedRole], () => {
             <button type="submit" class="user-management__submit-btn">
               {{ userForm.id ? 'Update' : 'Save' }}
             </button>
-            <button 
-              type="button" 
-              class="user-management__cancel-btn"
-              @click="closeModal"
-            >
+            <button type="button" class="user-management__cancel-btn" @click="closeModal">
               Cancel
             </button>
           </div>
@@ -358,7 +379,7 @@ watch([searchQuery, selectedRole], () => {
   </section>
 </template>
 
-<style>
+<style scoped>
 .user-management {
   padding: 2rem;
   max-width: 100%;
@@ -408,7 +429,7 @@ watch([searchQuery, selectedRole], () => {
 }
 
 .user-management__add-btn {
-  background-color: #4CAF50;
+  background-color: #4caf50;
   color: white;
   padding: 0.5rem 1rem;
   border: none;
@@ -586,7 +607,7 @@ watch([searchQuery, selectedRole], () => {
 }
 
 .user-management__submit-btn {
-  background-color: #4CAF50;
+  background-color: #4caf50;
   color: white;
 }
 
