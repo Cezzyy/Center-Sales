@@ -7,7 +7,7 @@ const mockUsers = [
     email: 'admin@center.com',
     password: 'admin123',
     role: 'admin',
-    name: 'Admin User',
+    username: 'Admin User',
     position: 'System Administrator'
   },
   {
@@ -15,7 +15,7 @@ const mockUsers = [
     email: 'manager@center.com',
     password: 'manager123',
     role: 'admin',
-    name: 'Sales Manager',
+    username: 'Sales Manager',
     position: 'Sales Manager'
   },
   {
@@ -23,7 +23,7 @@ const mockUsers = [
     email: 'sales@center.com',
     password: 'sales123',
     role: 'user',
-    name: 'Sales Staff',
+    username: 'Sales Staff',
     position: 'Sales Representative'
   },
   {
@@ -31,7 +31,7 @@ const mockUsers = [
     email: 'clerk@center.com',
     password: 'clerk123',
     role: 'user',
-    name: 'Sales Clerk',
+    username: 'Sales Clerk',
     position: 'Sales Clerk'
   }
 ]
@@ -72,7 +72,7 @@ export const useAuthStore = defineStore('auth', {
           id: user.id,
           email: user.email,
           role: user.role,
-          name: user.name,
+          username: user.username,
           position: user.position
         }
         this.isAuthenticated = true
