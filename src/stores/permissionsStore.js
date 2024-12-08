@@ -15,21 +15,33 @@ export const usePermissionsStore = defineStore('permissions', {
       'manage_settings': { name: 'Manage Settings', description: 'Can modify system settings' }
     },
     
-    // Define role-permission mappings
+    // Define role-permission mappings and descriptions
     rolePermissions: {
-      'admin': [
-        'read', 'write', 'delete', 'manage_users', 'manage_roles',
-        'view_reports', 'export_data', 'manage_settings'
-      ],
-      'manager': [
-        'read', 'write', 'manage_users', 'view_reports', 'export_data'
-      ],
-      'general_staff': [
-        'read', 'write', 'view_reports', 'export_data'
-      ],
-      'user': [
-        'read'
-      ]
+      'admin': {
+        permissions: [
+          'read', 'write', 'delete', 'manage_users', 'manage_roles',
+          'view_reports', 'export_data', 'manage_settings'
+        ],
+        description: 'Full system access'
+      },
+      'manager': {
+        permissions: [
+          'read', 'write', 'manage_users', 'view_reports', 'export_data'
+        ],
+        description: 'Department management access'
+      },
+      'general_staff': {
+        permissions: [
+          'read', 'write', 'view_reports', 'export_data'
+        ],
+        description: 'Staff access with basic permissions'
+      },
+      'user': {
+        permissions: [
+          'read'
+        ],
+        description: 'Basic user access'
+      }
     }
   }),
 
@@ -38,14 +50,14 @@ export const usePermissionsStore = defineStore('permissions', {
     currentUserPermissions: (state) => {
       const authStore = useAuthStore()
       const userRole = authStore.user?.role
-      return userRole ? state.rolePermissions[userRole] || [] : []
+      return userRole ? state.rolePermissions[userRole]?.permissions || [] : []
     },
 
     // Check if user has specific permission
     hasPermission: (state) => (permission) => {
       const authStore = useAuthStore()
       const userRole = authStore.user?.role
-      return userRole && state.rolePermissions[userRole]?.includes(permission)
+      return userRole && state.rolePermissions[userRole]?.permissions?.includes(permission)
     },
 
     // Check if user has all specified permissions
@@ -53,7 +65,7 @@ export const usePermissionsStore = defineStore('permissions', {
       const authStore = useAuthStore()
       const userRole = authStore.user?.role
       return userRole && permissions.every(permission => 
-        state.rolePermissions[userRole]?.includes(permission)
+        state.rolePermissions[userRole]?.permissions?.includes(permission)
       )
     },
 
@@ -62,21 +74,35 @@ export const usePermissionsStore = defineStore('permissions', {
       .map(([id, details]) => ({ id, ...details })),
 
     // Get permissions for a specific role
-    getRolePermissions: (state) => (role) => state.rolePermissions[role] || []
+    getRolePermissions: (state) => (role) => state.rolePermissions[role]?.permissions || [],
+
+    // Get role description
+    getRoleDescription: (state) => (role) => state.rolePermissions[role]?.description || ''
   },
 
   actions: {
-    // Update permissions for a role
-    updateRolePermissions(role, permissions) {
-      if (role && Array.isArray(permissions)) {
-        this.rolePermissions[role] = permissions
+    // Update role permissions and description
+    updateRolePermissions(role, permissions, description) {
+      if (role) {
+        if (!this.rolePermissions[role]) {
+          this.rolePermissions[role] = { permissions: [], description: '' }
+        }
+        if (Array.isArray(permissions)) {
+          this.rolePermissions[role].permissions = permissions
+        }
+        if (description !== undefined) {
+          this.rolePermissions[role].description = description
+        }
       }
     },
 
-    // Add a new role with permissions
-    addRole(role, permissions) {
+    // Add a new role with permissions and description
+    addRole(role, permissions, description = '') {
       if (role && Array.isArray(permissions)) {
-        this.rolePermissions[role] = permissions
+        this.rolePermissions[role] = {
+          permissions,
+          description
+        }
       }
     },
 

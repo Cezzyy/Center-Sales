@@ -14,11 +14,11 @@ const availablePermissions = computed(() => permissionsStore.getAllPermissions)
 
 // State Management
 const roles = computed(() => {
-  return Object.entries(permissionsStore.rolePermissions).map(([name, permissions]) => ({
+  return Object.entries(permissionsStore.rolePermissions).map(([name, data]) => ({
     id: name,
     name,
-    description: getRoleDescription(name),
-    permissions,
+    description: data.description,
+    permissions: data.permissions,
     createdAt: new Date(), // In a real app, this would come from backend
   }))
 })
@@ -116,10 +116,10 @@ const addRole = async () => {
   }
 
   try {
-    const { name, permissions } = roleForm.value
+    const { name, permissions, description } = roleForm.value
 
     // Add role to permissions store
-    permissionsStore.addRole(name, permissions)
+    permissionsStore.addRole(name, permissions, description)
 
     // Log the action
     await logAction({
@@ -146,17 +146,20 @@ const editRole = async (roleId) => {
   try {
     if (!validateForm()) return
 
-    const { name, permissions } = roleForm.value
+    const { permissions, description } = roleForm.value
     const oldPermissions = permissionsStore.getRolePermissions(roleId)
+    const oldDescription = permissionsStore.getRoleDescription(roleId)
 
-    // Update role permissions
-    permissionsStore.updateRolePermissions(name, permissions)
+    // Update role permissions and description
+    permissionsStore.updateRolePermissions(roleId, permissions, description)
 
     // Log the action
     await logAction({
       action: 'UPDATE_ROLE',
       category: 'role',
-      details: `Updated role ${name}: Permissions changed from [${oldPermissions.join(', ')}] to [${permissions.join(', ')}]`,
+      details: `Updated role ${roleId}: 
+        Permissions changed from [${oldPermissions.join(', ')}] to [${permissions.join(', ')}]
+        Description changed from "${oldDescription}" to "${description}"`,
       targetId: roleId,
     })
 
