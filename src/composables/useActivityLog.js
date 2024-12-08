@@ -6,9 +6,13 @@ export function useActivityLog() {
     try {
       const authStore = useAuthStore()
       const user = authStore.currentUser
-      
+
       if (!user || !user.id) {
-        console.error('No authenticated user found when trying to log action:', { action, category, details })
+        console.error('No authenticated user found when trying to log action:', {
+          action,
+          category,
+          details,
+        })
         return null
       }
 

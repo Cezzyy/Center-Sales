@@ -222,14 +222,10 @@ const closeModal = () => {
   }
 }
 
-const handleSubmit = async () => {
+const handleSubmit = () => {
   if (validateForm()) {
-    try {
-      await store.handleEditOrderSubmit(formData.value)
-      closeModal()
-    } catch (error) {
-      console.error('Error updating order:', error)
-    }
+    emit('submit', formData.value);
+    closeModal();
   }
 }
 </script>

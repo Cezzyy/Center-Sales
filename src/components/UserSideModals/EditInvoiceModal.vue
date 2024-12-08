@@ -7,7 +7,7 @@ const props = defineProps({
   modelValue: Boolean
 });
 
-const emit = defineEmits(['update:modelValue', 'save']);
+const emit = defineEmits(['update:modelValue', 'submit']);
 const formData = ref({
   invoiceId: '',
   customer: '',
@@ -46,7 +46,7 @@ const closeModal = () => {
 
 const handleSubmit = () => {
   if (validateForm()) {
-    store.handleEditInvoiceSubmit(formData.value);
+    emit('submit', formData.value);
     closeModal();
   }
 };
