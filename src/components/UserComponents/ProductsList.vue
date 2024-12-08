@@ -1,6 +1,13 @@
 <script setup>
 import { defineAsyncComponent } from 'vue'
 import { useProductsStore } from '@/stores/productStore'
+import { useActivityLog } from '@/composables/useActivityLog'
+import { usePermissions } from '@/composables/usePermissions'
+import { watch } from 'vue'
+
+const activityLog = useActivityLog();
+const { can } = usePermissions()
+
 const AddProductModal = defineAsyncComponent(() => import('../UserSideModals/AddProductModal.vue'))
 const EditProductModal = defineAsyncComponent(() => import('../UserSideModals/EditProductModal.vue'))
 
@@ -9,14 +16,93 @@ const store = useProductsStore()
 const openEditProductModal = (product) => {
   store.showEditProductModal = true
   store.editProduct = { ...product }
+  activityLog.logAction({
+    action: 'OPEN_EDIT_MODAL',
+    category: 'products',
+    details: `Opened edit modal for product: ${product.name}`,
+    targetId: product.id,
+    additionalData: { productName: product.name }
+  })
 }
 
 const handleAddProduct = () => {
+  if (!can.write()) {
+    console.error('Permission denied: Cannot add products')
+    return
+  }
+
   // Add product logic here
+  activityLog.logAction({
+    action: 'ADD_PRODUCT',
+    category: 'products',
+    details: 'Added new product to inventory',
+    additionalData: { product: store.newProduct }
+  })
 }
 
 const handleEditProduct = () => {
+  if (!can.write()) {
+    console.error('Permission denied: Cannot edit products')
+    return
+  }
+
   // Edit product logic here
+  activityLog.logAction({
+    action: 'EDIT_PRODUCT',
+    category: 'products',
+    details: `Updated product details`,
+    targetId: store.editProduct.id,
+    additionalData: {
+      productName: store.editProduct.name,
+      changes: store.editProduct
+    }
+  })
+}
+
+const handleDeleteProduct = (productId) => {
+  if (!can.delete()) {
+    console.error('Permission denied: Cannot delete products')
+    return
+  }
+
+  store.deleteProduct(productId)
+  activityLog.logAction({
+    action: 'DELETE_PRODUCT',
+    category: 'products',
+    details: 'Deleted product from inventory',
+    targetId: productId
+  })
+}
+
+watch(() => store.searchQuery, (newQuery) => {
+  activityLog.logAction({
+    action: 'APPLY_SEARCH',
+    category: 'products',
+    details: 'Applied product search filter',
+    additionalData: { searchQuery: newQuery }
+  })
+})
+
+watch(() => store.selectedCategory, (newCategory) => {
+  activityLog.logAction({
+    action: 'FILTER_CATEGORY',
+    category: 'products',
+    details: 'Changed product category filter',
+    additionalData: { category: newCategory || 'All Categories' }
+  })
+})
+
+const handleSort = (column) => {
+  store.handleSort(column)
+  activityLog.logAction({
+    action: 'SORT_PRODUCTS',
+    category: 'products',
+    details: `Sorted products list`,
+    additionalData: {
+      column,
+      direction: store.sortDirection
+    }
+  })
 }
 </script>
 
@@ -40,6 +126,13 @@ const handleEditProduct = () => {
           </option>
         </select>
       </div>
+      <button
+        v-if="can.write()"
+        @click="store.showAddProductModal = true"
+        class="action-button add-button"
+      >
+        Add Product
+      </button>
     </section>
 
     <!-- Key Metrics Section -->
@@ -60,9 +153,6 @@ const handleEditProduct = () => {
 
     <!-- Actions Section -->
     <section class="actions-section">
-      <button @click="store.showAddProductModal = true" class="action-button add-button">
-        Add Product
-      </button>
       <button @click="store.exportToExcel" class="action-button export-button">Export to Excel</button>
     </section>
 
@@ -76,7 +166,7 @@ const handleEditProduct = () => {
             <th
               v-for="column in ['name', 'sku', 'category', 'quantity', 'price', 'status']"
               :key="column"
-              @click="store.handleSort(column)"
+              @click="handleSort(column)"
               class="sortable"
             >
               {{ column.charAt(0).toUpperCase() + column.slice(1) }}
@@ -98,8 +188,20 @@ const handleEditProduct = () => {
               </span>
             </td>
             <td class="actions">
-              <button @click="openEditProductModal(product)" class="icon-button edit">Edit</button>
-              <button @click="store.deleteProduct(product.id)" class="icon-button delete">Delete</button>
+              <button
+                v-if="can.write()"
+                @click="openEditProductModal(product)"
+                class="icon-button edit"
+              >
+                Edit
+              </button>
+              <button
+                v-if="can.delete()"
+                @click="handleDeleteProduct(product.id)"
+                class="icon-button delete"
+              >
+                Delete
+              </button>
             </td>
           </tr>
         </tbody>

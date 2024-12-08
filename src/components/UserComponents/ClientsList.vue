@@ -3,9 +3,11 @@ import { defineAsyncComponent, computed, ref } from 'vue'
 import { useClientStore } from '@/stores/clientStore'
 import { storeToRefs } from 'pinia'
 import { useActivityLog } from '@/composables/useActivityLog'
+import { usePermissions } from '@/composables/usePermissions'
 
-// Initialize activity logger
+// Initialize activity logger and permissions
 const { logClientAction } = useActivityLog()
+const { can } = usePermissions()
 
 // Lazy load modals for better initial load performance
 const AddClientModal = defineAsyncComponent(() => import('../UserSideModals/AddClientModal.vue'))
@@ -43,6 +45,11 @@ const handleSearch = (event) => {
 }
 
 const handleAddClient = async (clientData) => {
+  if (!can.write()) {
+    console.error('Permission denied: Cannot add clients')
+    return
+  }
+
   try {
     await store.addClient(clientData)
 
@@ -60,6 +67,11 @@ const handleAddClient = async (clientData) => {
 }
 
 const handleEditClient = async (clientData) => {
+  if (!can.write()) {
+    console.error('Permission denied: Cannot edit clients')
+    return
+  }
+
   try {
     const oldClient = { ...store.getClientById(clientData.id) }
     await store.updateClient(clientData)
@@ -105,11 +117,16 @@ const handleDeleteClient = async (client) => {
 }
 
 const confirmDelete = async () => {
+  if (!can.delete()) {
+    console.error('Permission denied: Cannot delete clients')
+    return
+  }
+
   try {
     const client = clientToDelete.value
     await store.deleteClient(client.id)
 
-    // Log the client deletion
+    // Log the deletion
     await logClientAction(
       'DELETE_CLIENT',
       `Deleted client: ${client.firstName} ${client.lastName} from ${client.company}`,
@@ -160,7 +177,11 @@ const goToPreviousPage = () => {
           />
         </div>
       </div>
-      <button class="add-button" @click="store.openModal">
+      <button
+        v-if="can.write()"
+        class="add-button"
+        @click="store.openModal"
+      >
         <span class="plus-icon">+</span>
         Add Client
       </button>
@@ -222,6 +243,7 @@ const goToPreviousPage = () => {
             <td>{{ client.phone }}</td>
             <td class="actions">
               <button
+                v-if="can.write()"
                 class="edit-btn"
                 @click="store.editClient(client)"
                 :title="`Edit ${client.firstName} ${client.lastName}`"
@@ -229,6 +251,7 @@ const goToPreviousPage = () => {
                 Edit
               </button>
               <button
+                v-if="can.delete()"
                 class="delete-btn"
                 @click="handleDeleteClient(client)"
                 :title="`Delete ${client.firstName} ${client.lastName}`"

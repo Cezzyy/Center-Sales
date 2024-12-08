@@ -3,6 +3,7 @@ import { defineAsyncComponent } from 'vue'
 import { useOrderInvoiceStore } from '@/stores/salesStore'
 import { storeToRefs } from 'pinia'
 import { useActivityLog } from '@/composables/useActivityLog'
+import { usePermissions } from '@/composables/usePermissions'
 
 const AddSalesModal = defineAsyncComponent(() => import('../UserSideModals/AddSalesModal.vue'))
 const AddInvoiceModal = defineAsyncComponent(() => import('../UserSideModals/AddInvoiceModal.vue'))
@@ -12,8 +13,9 @@ const EditInvoiceModal = defineAsyncComponent(
   () => import('../UserSideModals/EditInvoiceModal.vue'),
 )
 
-// Initialize activity logger
+// Initialize activity logger and permissions
 const { logOrderAction, logInvoiceAction } = useActivityLog()
+const { can } = usePermissions()
 
 // Initialize store
 const store = useOrderInvoiceStore()
@@ -88,59 +90,87 @@ const closeEditInvoiceModal = () => store.closeModal('EditInvoice')
 
 // Form submission handlers
 const handleEditOrderSubmit = async (updatedOrder) => {
-  const oldOrder = { ...store.getOrderById(updatedOrder.id) }
-  await store.handleEditOrderSubmit(updatedOrder)
-
-  // Log order update with changes
-  const changes = []
-  if (oldOrder.customerName !== updatedOrder.customerName) {
-    changes.push(`customer from ${oldOrder.customerName} to ${updatedOrder.customerName}`)
-  }
-  if (oldOrder.productName !== updatedOrder.productName) {
-    changes.push(`product from ${oldOrder.productName} to ${updatedOrder.productName}`)
-  }
-  if (oldOrder.quantity !== updatedOrder.quantity) {
-    changes.push(`quantity from ${oldOrder.quantity} to ${updatedOrder.quantity}`)
-  }
-  if (oldOrder.amount !== updatedOrder.amount) {
-    changes.push(`amount from ${oldOrder.amount} to ${updatedOrder.amount}`)
-  }
-  if (oldOrder.status !== updatedOrder.status) {
-    changes.push(`status from ${oldOrder.status} to ${updatedOrder.status}`)
+  if (!can.write()) {
+    console.error('Permission denied: Cannot edit orders')
+    return
   }
 
-  await logOrderAction(
-    'UPDATE_ORDER',
-    `Updated order #${updatedOrder.id} - Changed ${changes.join(', ')}`,
-    updatedOrder.id,
-    { changes },
-  )
+  try {
+    const oldOrder = { ...store.getOrderById(updatedOrder.id) }
+    await store.handleEditOrderSubmit(updatedOrder)
+
+    // Log order update with changes
+    const changes = []
+    if (oldOrder.customerName !== updatedOrder.customerName) {
+      changes.push(`customer from ${oldOrder.customerName} to ${updatedOrder.customerName}`)
+    }
+    if (oldOrder.productName !== updatedOrder.productName) {
+      changes.push(`product from ${oldOrder.productName} to ${updatedOrder.productName}`)
+    }
+    if (oldOrder.quantity !== updatedOrder.quantity) {
+      changes.push(`quantity from ${oldOrder.quantity} to ${updatedOrder.quantity}`)
+    }
+    if (oldOrder.amount !== updatedOrder.amount) {
+      changes.push(`amount from ${oldOrder.amount} to ${updatedOrder.amount}`)
+    }
+    if (oldOrder.status !== updatedOrder.status) {
+      changes.push(`status from ${oldOrder.status} to ${updatedOrder.status}`)
+    }
+
+    await logOrderAction(
+      'UPDATE_ORDER',
+      `Updated order #${updatedOrder.id} - Changed ${changes.join(', ')}`,
+      updatedOrder.id,
+      { changes },
+    )
+    closeEditOrderModal()
+  } catch (error) {
+    console.error('Failed to update order:', error)
+  }
 }
 
 const handleAddInvoiceSubmit = async (newInvoice) => {
-  await store.handleAddInvoiceSubmit(newInvoice)
+  if (!can.write()) {
+    console.error('Permission denied: Cannot create invoices')
+    return
+  }
 
-  await logInvoiceAction(
-    'CREATE_INVOICE',
-    `Created new invoice for order #${newInvoice.orderId} - Amount: ${newInvoice.amount}, Due: ${formatDate(newInvoice.dueDate)}`,
-    newInvoice.id,
-    { orderId: newInvoice.orderId },
-  )
+  try {
+    await store.handleAddInvoiceSubmit(newInvoice)
+    await logInvoiceAction(
+      'CREATE_INVOICE',
+      `Created new invoice for order #${newInvoice.orderId} - Amount: ${newInvoice.amount}, Due: ${formatDate(newInvoice.dueDate)}`,
+      newInvoice.id,
+      { orderId: newInvoice.orderId },
+    )
+    closeAddInvoiceModal()
+  } catch (error) {
+    console.error('Failed to create invoice:', error)
+  }
 }
 
 const handleAddSalesSubmit = async (salesData) => {
-  await store.handleAddSalesSubmit(salesData)
+  if (!can.write()) {
+    console.error('Permission denied: Cannot create sales')
+    return
+  }
 
-  await logOrderAction(
-    'CREATE_ORDER',
-    `Created new order - Customer: ${salesData.customerName}, Product: ${salesData.productName}, Amount: ${salesData.amount}`,
-    salesData.id,
-    {
-      customerName: salesData.customerName,
-      productName: salesData.productName,
-      amount: salesData.amount,
-    },
-  )
+  try {
+    await store.handleAddSalesSubmit(salesData)
+    await logOrderAction(
+      'CREATE_ORDER',
+      `Created new order - Customer: ${salesData.customerName}, Product: ${salesData.productName}, Amount: ${salesData.amount}`,
+      salesData.id,
+      {
+        customerName: salesData.customerName,
+        productName: salesData.productName,
+        amount: salesData.amount,
+      },
+    )
+    closeAddSalesModal()
+  } catch (error) {
+    console.error('Failed to create sale:', error)
+  }
 }
 
 // Pagination handlers
@@ -157,23 +187,28 @@ const resetInvoiceFilters = () => store.resetFilters('invoices')
 
 // Mark invoice as paid
 const markAsPaid = async (invoiceId) => {
+  if (!can.write()) {
+    console.error('Permission denied: Cannot update invoice status')
+    return
+  }
+
   try {
-    const invoice = store.getInvoiceById(invoiceId);
+    const invoice = store.getInvoiceById(invoiceId)
     if (!invoice) {
-      console.error('Invoice not found:', invoiceId);
-      return;
+      console.error('Invoice not found:', invoiceId)
+      return
     }
 
-    await store.markInvoiceAsPaid(invoiceId);
+    await store.markInvoiceAsPaid(invoiceId)
 
     await logInvoiceAction(
       'UPDATE_INVOICE_STATUS',
       `Marked invoice #${invoiceId} as paid`,
       invoiceId,
-      { status: 'paid' }
-    );
+      { status: 'paid' },
+    )
   } catch (error) {
-    console.error('Error marking invoice as paid:', error);
+    console.error('Error marking invoice as paid:', error)
   }
 }
 </script>
@@ -184,7 +219,7 @@ const markAsPaid = async (invoiceId) => {
     <section class="section order-tracking">
       <div class="section-header">
         <h2>Order Tracking</h2>
-        <button class="btn-add" @click="openAddSalesModal">+ Add Order</button>
+        <button v-if="can.write()" class="btn-add" @click="openAddSalesModal">+ Add Order</button>
       </div>
 
       <!-- Filters -->
@@ -270,7 +305,11 @@ const markAsPaid = async (invoiceId) => {
                     <button class="btn-action btn-view" @click="openViewOrderModal(order)">
                       View
                     </button>
-                    <button class="btn-action btn-edit" @click="openEditOrderModal(order)">
+                    <button
+                      v-if="can.write()"
+                      class="btn-action btn-edit"
+                      @click="openEditOrderModal(order)"
+                    >
                       Edit
                     </button>
                   </div>
@@ -321,7 +360,9 @@ const markAsPaid = async (invoiceId) => {
     <section class="section invoicing">
       <div class="section-header">
         <h2>Invoicing</h2>
-        <button class="btn-add" @click="openAddInvoiceModal">+ Add Invoice</button>
+        <button v-if="can.write()" class="btn-add" @click="openAddInvoiceModal">
+          + Add Invoice
+        </button>
       </div>
 
       <!-- Invoice Filters -->
@@ -393,18 +434,18 @@ const markAsPaid = async (invoiceId) => {
                 <td>
                   <div class="action-buttons">
                     <button
-                      class="btn-action btn-edit"
-                      @click="openEditInvoiceModal(invoice)"
-                      :disabled="invoice.isPaid"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      v-if="!invoice.isPaid"
-                      class="btn-action btn-paid"
+                      v-if="can.write() && !invoice.isPaid"
+                      class="btn-action btn-mark-paid"
                       @click="markAsPaid(invoice.invoiceId)"
                     >
                       Mark as Paid
+                    </button>
+                    <button
+                      v-if="can.write()"
+                      class="btn-action btn-edit"
+                      @click="openEditInvoiceModal(invoice)"
+                    >
+                      Edit
                     </button>
                   </div>
                 </td>

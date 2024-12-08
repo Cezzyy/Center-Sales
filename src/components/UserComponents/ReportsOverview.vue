@@ -6,11 +6,17 @@ import { saveAs } from 'file-saver'
 import * as XLSX from 'xlsx'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { faChartLine, faPlus } from '@fortawesome/free-solid-svg-icons'
-const AddReportModal = defineAsyncComponent(() => import('../UserSideModals/AddReportModal.vue'))
+import { useActivityLog } from '@/composables/useActivityLog'
+import { usePermissions } from '@/composables/usePermissions'
 
-// Get stores
+// Get stores, activity logger, and permissions
 const reportsStore = useReportsStore()
 const orderStore = useOrderInvoiceStore()
+const activityLog = useActivityLog()
+const { logAction } = activityLog
+const { can } = usePermissions()
+
+const AddReportModal = defineAsyncComponent(() => import('../UserSideModals/AddReportModal.vue'))
 
 // Reactive references for filters and pagination
 const startDate = ref('')
@@ -42,27 +48,99 @@ const handleSort = (column) => {
     sortDirection.value = 'asc'
   }
   reportsStore.handleSort(column)
+  logAction({
+    action: 'SORT_REPORTS',
+    category: 'reports',
+    details: `Reports sorted by ${column} in ${sortDirection.value} order`,
+    additionalData: { column, direction: sortDirection.value }
+  })
 }
 
 const changePage = (page) => {
   if (page >= 1 && page <= totalPages.value) {
     currentPage.value = page
   }
+  logAction({
+    action: 'CHANGE_PAGE',
+    category: 'reports',
+    details: `Navigated to reports page ${page}`,
+    additionalData: { page, totalPages: totalPages.value }
+  })
 }
 
-const exportToExcel = () => {
-  const ws = XLSX.utils.json_to_sheet(reports.value)
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, 'Reports')
-  const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
-  const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-  saveAs(data, 'reports.xlsx')
+const exportToExcel = async () => {
+  if (!can.exportData()) {
+    console.error('Permission denied: Cannot export data')
+    return
+  }
+
+  try {
+    const ws = XLSX.utils.json_to_sheet(reports.value)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Reports')
+    const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+    const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    saveAs(data, 'reports.xlsx')
+
+    logAction({
+      action: 'EXPORT_REPORTS',
+      category: 'reports',
+      details: 'Exported reports to Excel format',
+      additionalData: {
+        format: 'xlsx',
+        count: reports.value.length,
+        dateRange: { start: startDate.value, end: endDate.value }
+      }
+    })
+  } catch (error) {
+    console.error('Failed to export to Excel:', error)
+  }
 }
 
-const exportToCSV = () => {
-  const csvContent = reports.value.map(report => Object.values(report).join(',')).join('\n')
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' })
-  saveAs(blob, 'reports.csv')
+const exportToCSV = async () => {
+  if (!can.exportData()) {
+    console.error('Permission denied: Cannot export data')
+    return
+  }
+
+  try {
+    const csvContent = reports.value.map(report => Object.values(report).join(',')).join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' })
+    saveAs(blob, 'reports.csv')
+
+    logAction({
+      action: 'EXPORT_REPORTS',
+      category: 'reports',
+      details: 'Exported reports to CSV format',
+      additionalData: {
+        format: 'csv',
+        count: reports.value.length,
+        dateRange: { start: startDate.value, end: endDate.value }
+      }
+    })
+  } catch (error) {
+    console.error('Failed to export to CSV:', error)
+  }
+}
+
+const addReport = async (reportData) => {
+  if (!can.write()) {
+    console.error('Permission denied: Cannot create reports')
+    return
+  }
+
+  try {
+    await reportsStore.addReport(reportData)
+    showAddReportModal.value = false
+    logAction({
+      action: 'CREATE_REPORT',
+      category: 'reports',
+      details: 'Created new report',
+      additionalData: { reportData }
+    })
+  } catch (error) {
+    console.error('Failed to create report:', error)
+  }
 }
 
 // Watch for filter changes to reset pagination
@@ -70,6 +148,15 @@ watch([startDate, endDate, searchQuery], () => {
   currentPage.value = 1
   reportsStore.setDateFilter(startDate.value, endDate.value)
   reportsStore.setSearchQuery(searchQuery.value)
+  logAction({
+    action: 'APPLY_FILTERS',
+    category: 'reports',
+    details: 'Applied report filters',
+    additionalData: {
+      dateRange: { start: startDate.value, end: endDate.value },
+      searchQuery: searchQuery.value
+    }
+  })
 })
 </script>
 
@@ -98,13 +185,25 @@ watch([startDate, endDate, searchQuery], () => {
         </div>
 
         <div class="export-buttons">
-          <button @click="exportToExcel" class="btn-export">
+          <button 
+            v-if="can.exportData()"
+            @click="exportToExcel" 
+            class="btn-export"
+          >
             Export to Excel
           </button>
-          <button @click="exportToCSV" class="btn-export">
+          <button 
+            v-if="can.exportData()"
+            @click="exportToCSV" 
+            class="btn-export"
+          >
             Export to CSV
           </button>
-          <button @click="showAddReportModal = true" class="btn-add">
+          <button 
+            v-if="can.write()"
+            @click="showAddReportModal = true" 
+            class="btn-add"
+          >
             Add Report
           </button>
         </div>
@@ -143,6 +242,7 @@ watch([startDate, endDate, searchQuery], () => {
             <th @click="handleSort('dueDate')">Due Date</th>
             <th @click="handleSort('status')">Status</th>
             <th @click="handleSort('paymentStatus')">Payment Status</th>
+            <th v-if="can.write()">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -158,6 +258,14 @@ watch([startDate, endDate, searchQuery], () => {
             <td>{{ report.dueDate }}</td>
             <td>{{ report.status }}</td>
             <td>{{ report.paymentStatus }}</td>
+            <td v-if="can.write()">
+              <button
+                class="btn-edit"
+                @click="editReport(report)"
+              >
+                Edit
+              </button>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -173,7 +281,11 @@ watch([startDate, endDate, searchQuery], () => {
           </div>
           <h3 class="empty-state__title">No Reports Found</h3>
           <p class="empty-state__message">There are no reports matching your current filters. Try adjusting your search criteria or add a new report.</p>
-          <button @click="showAddReportModal = true" class="btn-add empty-state__button">
+          <button 
+            v-if="can.write()"
+            @click="showAddReportModal = true" 
+            class="btn-add empty-state__button"
+          >
             <font-awesome-icon :icon="faPlus" />
             Add New Report
           </button>
