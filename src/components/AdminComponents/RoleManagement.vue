@@ -1,44 +1,28 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useActivityLog } from '@/composables/useActivityLog'
+import { usePermissionsStore } from '@/stores/permissionsStore'
+import { useAuthStore } from '@/stores/authStore'
 
-// Initialize activity logger
+// Initialize stores and activity logger
+const permissionsStore = usePermissionsStore()
+const authStore = useAuthStore()
 const { logAction } = useActivityLog()
 
-const mockRoles = [
-  {
-    id: '1',
-    name: 'admin',
-    description: 'Full system access',
-    permissions: ['read', 'write', 'delete', 'manage_users', 'manage_roles'],
-    createdAt: new Date('2024-01-01'),
-  },
-  {
-    id: '2',
-    name: 'manager',
-    description: 'Department management access',
-    permissions: ['read', 'write', 'manage_users'],
-    createdAt: new Date('2024-01-02'),
-  },
-  {
-    id: '3',
-    name: 'user',
-    description: 'Basic user access',
-    permissions: ['read'],
-    createdAt: new Date('2024-01-03'),
-  },
-]
-
-const availablePermissions = [
-  { id: 'read', name: 'Read Access', description: 'Can view resources' },
-  { id: 'write', name: 'Write Access', description: 'Can create and edit resources' },
-  { id: 'delete', name: 'Delete Access', description: 'Can delete resources' },
-  { id: 'manage_users', name: 'Manage Users', description: 'Can manage user accounts' },
-  { id: 'manage_roles', name: 'Manage Roles', description: 'Can manage roles and permissions' },
-]
+// Get available permissions from store
+const availablePermissions = computed(() => permissionsStore.getAllPermissions)
 
 // State Management
-const roles = ref([...mockRoles])
+const roles = computed(() => {
+  return Object.entries(permissionsStore.rolePermissions).map(([name, permissions]) => ({
+    id: name,
+    name,
+    description: getRoleDescription(name),
+    permissions,
+    createdAt: new Date(), // In a real app, this would come from backend
+  }))
+})
+
 const error = ref(null)
 const searchQuery = ref('')
 const showModal = ref(false)
@@ -88,6 +72,9 @@ const validateForm = () => {
   } else if (roleForm.value.name.length < 2) {
     errors.name = 'Role name must be at least 2 characters'
     isValid = false
+  } else if (roleForm.value.name === 'admin' && !roleForm.value.id) {
+    errors.name = 'Cannot create another admin role'
+    isValid = false
   }
 
   if (!roleForm.value.description.trim()) {
@@ -104,25 +91,40 @@ const validateForm = () => {
   return isValid
 }
 
+// Helper function for role descriptions
+const getRoleDescription = (role) => {
+  switch (role) {
+    case 'admin':
+      return 'Full system access'
+    case 'manager':
+      return 'Department management access'
+    case 'user':
+      return 'Basic user access'
+    default:
+      return 'Custom role'
+  }
+}
+
 // Role Management Functions
 const addRole = async () => {
   if (!validateForm()) return
+  if (!permissionsStore.hasPermission('manage_roles')) {
+    error.value = 'You do not have permission to add roles'
+    return
+  }
 
   try {
-    const newRole = {
-      id: crypto.randomUUID(),
-      ...roleForm.value,
-      createdAt: new Date(),
-    }
-
-    roles.value.push(newRole)
+    const { name, permissions } = roleForm.value
+    
+    // Add role to permissions store
+    permissionsStore.addRole(name, permissions)
     
     // Log the action
     await logAction({
       action: 'CREATE_ROLE',
       category: 'role',
-      details: `Created new role: ${newRole.name} with permissions: ${newRole.permissions.join(', ')}`,
-      targetId: newRole.id
+      details: `Created new role: ${name} with permissions: ${permissions.join(', ')}`,
+      targetId: name
     })
     
     showModal.value = false
@@ -134,23 +136,25 @@ const addRole = async () => {
 }
 
 const editRole = async (roleId) => {
-  try {
-    const roleIndex = roles.value.findIndex((r) => r.id === roleId)
-    if (roleIndex === -1) throw new Error('Role not found')
+  if (!permissionsStore.hasPermission('manage_roles')) {
+    error.value = 'You do not have permission to edit roles'
+    return
+  }
 
+  try {
     if (!validateForm()) return
 
-    const oldRole = { ...roles.value[roleIndex] }
-    roles.value[roleIndex] = {
-      ...roles.value[roleIndex],
-      ...roleForm.value,
-    }
+    const { name, permissions } = roleForm.value
+    const oldPermissions = permissionsStore.getRolePermissions(roleId)
+    
+    // Update role permissions
+    permissionsStore.updateRolePermissions(name, permissions)
     
     // Log the action
     await logAction({
       action: 'UPDATE_ROLE',
       category: 'role',
-      details: `Updated role ${oldRole.name}: Permissions changed from [${oldRole.permissions.join(', ')}] to [${roleForm.value.permissions.join(', ')}]`,
+      details: `Updated role ${name}: Permissions changed from [${oldPermissions.join(', ')}] to [${permissions.join(', ')}]`,
       targetId: roleId
     })
 
@@ -163,20 +167,27 @@ const editRole = async (roleId) => {
 }
 
 const deleteRole = async (roleId) => {
+  if (!permissionsStore.hasPermission('manage_roles')) {
+    error.value = 'You do not have permission to delete roles'
+    return
+  }
+
   try {
+    if (roleId === 'admin') {
+      error.value = 'Cannot delete admin role'
+      return
+    }
+
     if (!confirm('Are you sure you want to delete this role?')) return
 
-    const roleIndex = roles.value.findIndex((r) => r.id === roleId)
-    if (roleIndex === -1) throw new Error('Role not found')
-
-    const deletedRole = roles.value[roleIndex]
-    roles.value = roles.value.filter((role) => role.id !== roleId)
+    // Delete role from permissions store
+    permissionsStore.removeRole(roleId)
     
     // Log the action
     await logAction({
       action: 'DELETE_ROLE',
       category: 'role',
-      details: `Deleted role: ${deletedRole.name}`,
+      details: `Deleted role: ${roleId}`,
       targetId: roleId
     })
   } catch (e) {
