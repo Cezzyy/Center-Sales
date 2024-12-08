@@ -20,7 +20,7 @@ const formData = ref({
   salesRepresentative: '',
   amount: 0,
   status: 'pending',
-  date: new Date().toISOString().split('T')[0]
+  date: new Date().toISOString().split('T')[0],
 })
 
 // Form validation
@@ -37,18 +37,21 @@ const selectedProduct = ref(null)
 const customerSuggestions = computed(() => {
   if (!customerSearch.value) return []
   const query = customerSearch.value.toLowerCase()
-  return clientStore.clients.filter(client =>
-    `${client.firstName} ${client.lastName}`.toLowerCase().includes(query) ||
-    client.company.toLowerCase().includes(query)
-  ).slice(0, 5)
+  return clientStore.clients
+    .filter(
+      (client) =>
+        `${client.firstName} ${client.lastName}`.toLowerCase().includes(query) ||
+        client.company.toLowerCase().includes(query),
+    )
+    .slice(0, 5)
 })
 
 const productSuggestions = computed(() => {
   if (!productSearch.value) return []
   const query = productSearch.value.toLowerCase()
-  return productStore.products.filter(product =>
-    product.name.toLowerCase().includes(query)
-  ).slice(0, 5)
+  return productStore.products
+    .filter((product) => product.name.toLowerCase().includes(query))
+    .slice(0, 5)
 })
 
 // Calculate amount based on product price and quantity
@@ -67,14 +70,17 @@ const formattedAmount = computed(() => {
   return new Intl.NumberFormat('en-PH', {
     style: 'currency',
     currency: 'PHP',
-    minimumFractionDigits: 2
+    minimumFractionDigits: 2,
   }).format(formData.value.amount)
 })
 
 // Watch for quantity changes to update amount
-watch(() => formData.value.quantity, () => {
-  calculateAmount()
-})
+watch(
+  () => formData.value.quantity,
+  () => {
+    calculateAmount()
+  },
+)
 
 // Generate a random order ID
 const generatedOrderId = computed(() => {
@@ -84,32 +90,32 @@ const generatedOrderId = computed(() => {
 // Form validation
 const validateForm = () => {
   errors.value = {}
-  
+
   if (!formData.value.customerName) {
     errors.value.customerName = 'Customer name is required'
   }
-  
+
   if (!formData.value.productName) {
     errors.value.productName = 'Product name is required'
   }
-  
+
   if (!formData.value.quantity || formData.value.quantity < 1) {
     errors.value.quantity = 'Quantity must be at least 1'
   } else if (selectedProduct.value && formData.value.quantity > selectedProduct.value.quantity) {
     errors.value.quantity = 'Quantity exceeds available stock'
   }
-  
+
   if (!formData.value.salesRepresentative) {
     errors.value.salesRepresentative = 'Sales representative is required'
   }
-  
+
   return Object.keys(errors.value).length === 0
 }
 
 // Validate quantity input
 const validateQuantity = (event) => {
   const value = parseInt(event.target.value)
-  
+
   if (isNaN(value) || value < 1) {
     formData.value.quantity = 1
     errors.value.quantity = 'Quantity must be at least 1'
@@ -120,7 +126,7 @@ const validateQuantity = (event) => {
     errors.value.quantity = null
     formData.value.quantity = value
   }
-  
+
   calculateAmount()
 }
 
@@ -153,7 +159,7 @@ const closeModal = () => {
     salesRepresentative: '',
     amount: 0,
     status: 'pending',
-    date: new Date().toISOString().split('T')[0]
+    date: new Date().toISOString().split('T')[0],
   }
   customerSearch.value = ''
   productSearch.value = ''
@@ -186,11 +192,11 @@ const handleSubmit = () => {
             <div class="form-columns">
               <div class="form-group">
                 <label>Order ID</label>
-                <input 
-                  type="text" 
-                  :value="generatedOrderId" 
-                  disabled 
-                  class="form-control disabled-input" 
+                <input
+                  type="text"
+                  :value="generatedOrderId"
+                  disabled
+                  class="form-control disabled-input"
                 />
               </div>
 
@@ -204,9 +210,12 @@ const handleSubmit = () => {
                     required
                     placeholder="Search customer..."
                     @focus="showCustomerSuggestions = true"
-                    @blur="setTimeout(() => showCustomerSuggestions = false, 200)"
+                    @blur="setTimeout(() => (showCustomerSuggestions = false), 200)"
                   />
-                  <div v-if="showCustomerSuggestions && customerSuggestions.length" class="suggestions">
+                  <div
+                    v-if="showCustomerSuggestions && customerSuggestions.length"
+                    class="suggestions"
+                  >
                     <div
                       v-for="client in customerSuggestions"
                       :key="client.id"
@@ -216,7 +225,9 @@ const handleSubmit = () => {
                       {{ client.firstName }} {{ client.lastName }} - {{ client.company }}
                     </div>
                   </div>
-                  <span class="error-message" v-if="errors.customerName">{{ errors.customerName }}</span>
+                  <span class="error-message" v-if="errors.customerName">{{
+                    errors.customerName
+                  }}</span>
                 </div>
               </div>
             </div>
@@ -237,19 +248,24 @@ const handleSubmit = () => {
                         required
                         placeholder="Search product..."
                         @focus="showProductSuggestions = true"
-                        @blur="setTimeout(() => showProductSuggestions = false, 200)"
+                        @blur="setTimeout(() => (showProductSuggestions = false), 200)"
                       />
-                      <div v-if="showProductSuggestions && productSuggestions.length" class="suggestions">
+                      <div
+                        v-if="showProductSuggestions && productSuggestions.length"
+                        class="suggestions"
+                      >
                         <div
                           v-for="product in productSuggestions"
                           :key="product.id"
                           class="suggestion-item"
                           @mousedown="selectProduct(product)"
                         >
-                          {{ product.name }} - ${{ product.price }}
+                          {{ product.name }} - ₱{{ product.price }}
                         </div>
                       </div>
-                      <span class="error-message" v-if="errors.productName">{{ errors.productName }}</span>
+                      <span class="error-message" v-if="errors.productName">{{
+                        errors.productName
+                      }}</span>
                     </div>
                   </div>
                 </div>
@@ -278,12 +294,7 @@ const handleSubmit = () => {
                   <div class="form-group">
                     <label>Amount</label>
                     <div class="price-input">
-                      <input
-                        type="text"
-                        :value="formattedAmount"
-                        class="form-control"
-                        disabled
-                      />
+                      <input type="text" :value="formattedAmount" class="form-control" disabled />
                     </div>
                   </div>
                 </div>
@@ -297,7 +308,9 @@ const handleSubmit = () => {
                       required
                       placeholder="Enter sales representative name"
                     />
-                    <span class="error-message" v-if="errors.salesRepresentative">{{ errors.salesRepresentative }}</span>
+                    <span class="error-message" v-if="errors.salesRepresentative">{{
+                      errors.salesRepresentative
+                    }}</span>
                   </div>
                 </div>
               </div>
@@ -335,7 +348,9 @@ const handleSubmit = () => {
   max-width: 800px;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
 .modal-header {
@@ -425,7 +440,7 @@ const handleSubmit = () => {
 }
 
 .form-group.required label::after {
-  content: "*";
+  content: '*';
   color: #ef4444;
   margin-left: 0.25rem;
 }
