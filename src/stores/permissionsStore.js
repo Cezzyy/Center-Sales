@@ -24,6 +24,9 @@ export const usePermissionsStore = defineStore('permissions', {
       'manager': [
         'read', 'write', 'manage_users', 'view_reports', 'export_data'
       ],
+      'general_staff': [
+        'read', 'write', 'view_reports', 'export_data'
+      ],
       'user': [
         'read'
       ]
