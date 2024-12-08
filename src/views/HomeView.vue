@@ -141,11 +141,11 @@ onUnmounted(() => {
 
     <!-- Main Content -->
     <main class="main-content">
-      <component :is="currentView === 'Dashboard' ? HomeDashboard : null" />
-      <component :is="currentView === 'Clients' ? Clients : null" />
-      <component :is="currentView === 'Sales' ? Sales : null" />
-      <component :is="currentView === 'Reports' ? Reports : null" />
-      <component :is="currentView === 'Products' ? Products : null" />
+      <HomeDashboard v-if="currentView === 'Dashboard'" />
+      <Clients v-if="currentView === 'Clients'" />
+      <Sales v-if="currentView === 'Sales'" />
+      <Reports v-if="currentView === 'Reports'" />
+      <Products v-if="currentView === 'Products'" />
     </main>
   </div>
 </template>
