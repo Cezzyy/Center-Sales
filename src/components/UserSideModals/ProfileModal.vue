@@ -1,5 +1,6 @@
 <script setup>
 import { useAuthStore } from '../../stores/authStore'
+import { usePermissionsStore } from '../../stores/permissionsStore'
 import { computed } from 'vue'
 
 const props = defineProps({
@@ -10,16 +11,22 @@ const props = defineProps({
 })
 
 const authStore = useAuthStore()
+const permissionsStore = usePermissionsStore()
 const currentUser = computed(() => authStore.currentUser)
+const userPermissions = computed(() => permissionsStore.getRolePermissions(currentUser.value?.role || ''))
 
-const emit = defineEmits(['close', 'editProfile'])
+const emit = defineEmits(['close'])
 
 const handleClose = () => {
   emit('close')
 }
 
-const handleEditProfile = () => {
-  emit('editProfile')
+// Helper function to format permission name
+const formatPermissionName = (permission) => {
+  return permission
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
 }
 </script>
 
@@ -31,7 +38,7 @@ const handleEditProfile = () => {
       <div class="modal-content">
         <!-- Left Side - Profile Picture and Role Badge -->
         <div class="profile-picture-section">
-          <div class="avatar">{{ currentUser?.name?.charAt(0) || 'U' }}</div>
+          <div class="avatar">{{ currentUser?.username?.charAt(0) || 'U' }}</div>
           <div class="role-badge" :class="currentUser?.role">
             {{ currentUser?.role?.toUpperCase() }}
           </div>
@@ -41,7 +48,7 @@ const handleEditProfile = () => {
         <div class="profile-info-section">
           <div class="info-group">
             <label>Name</label>
-            <p>{{ currentUser?.name || 'Not Available' }}</p>
+            <p>{{ currentUser?.username || 'Not Available' }}</p>
           </div>
 
           <div class="info-group">
@@ -61,8 +68,18 @@ const handleEditProfile = () => {
             </p>
           </div>
 
-          <div class="button-group">
-            <button class="edit-button" @click="handleEditProfile">Edit Profile</button>
+          <!-- Permissions Section -->
+          <div class="permissions-section">
+            <label>Permissions</label>
+            <div class="permissions-list">
+              <div 
+                v-for="permission in userPermissions" 
+                :key="permission"
+                class="permission-badge"
+              >
+                {{ formatPermissionName(permission) }}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -193,25 +210,37 @@ const handleEditProfile = () => {
   color: #3730a3;
 }
 
-.button-group {
+/* New Permissions Styles */
+.permissions-section {
+  margin-top: 24px;
+}
+
+.permissions-section label {
+  display: block;
+  font-size: 14px;
+  color: #6b7280;
+  margin-bottom: 12px;
+}
+
+.permissions-list {
   display: flex;
-  gap: 12px;
-  margin-top: 32px;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
-.edit-button {
-  padding: 8px 16px;
-  border-radius: 6px;
+.permission-badge {
+  background-color: #f3f4f6;
+  color: #374151;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 14px;
   font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  background-color: #2563eb;
-  color: white;
-  border: none;
+  display: inline-flex;
+  align-items: center;
 }
 
-.edit-button:hover {
-  background-color: #1d4ed8;
+.permission-badge:hover {
+  background-color: #e5e7eb;
 }
 
 @media (max-width: 640px) {
