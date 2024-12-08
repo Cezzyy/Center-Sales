@@ -217,16 +217,20 @@ export const useOrderInvoiceStore = defineStore('orderInvoice', {
       const index = this.orders.findIndex(order => order.orderId === updatedOrder.orderId);
       if (index !== -1) {
         this.orders[index] = { ...this.orders[index], ...updatedOrder };
+        this.closeModal('EditOrder');
+        return this.orders[index];
       }
-      this.closeModal('EditOrder');
+      return null;
     },
 
     handleEditInvoiceSubmit(updatedInvoice) {
       const index = this.invoices.findIndex(invoice => invoice.invoiceId === updatedInvoice.invoiceId);
       if (index !== -1) {
         this.invoices[index] = { ...this.invoices[index], ...updatedInvoice };
+        this.closeModal('EditInvoice');
+        return this.invoices[index];
       }
-      this.closeModal('EditInvoice');
+      return null;
     },
 
     handleAddInvoiceSubmit(updatedInvoice) {
