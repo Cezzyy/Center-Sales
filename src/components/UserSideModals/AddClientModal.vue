@@ -1,16 +1,13 @@
 <script setup>
 import { ref } from 'vue'
 import defaultProfilePic from '@/assets/defaultprofile.png'
-import { useClientStore } from '@/stores/clientStore'
-
-// Initialize store
-const store = useClientStore()
+// import { useClientStore } from '@/stores/clientStore'
 
 // Props and Emits
 const props = defineProps({
   isModalOpen: Boolean,
 })
-const emit = defineEmits(['close'])
+const emit = defineEmits(['close', 'submit'])
 
 // Form state
 const previewImage = ref(defaultProfilePic)
@@ -52,16 +49,16 @@ const rules = {
     // Accepts formats: +63XXXXXXXXXX, +63 XXXXXXXXXX, 09XXXXXXXXX
     const phoneRegex = /^(?:\+63|0)(?:9\d{9})$/
     const cleanedNumber = value.replace(/\s+/g, '')
-    
+
     if (!phoneRegex.test(cleanedNumber)) {
       return 'Please enter a valid Philippine phone number (+63/09XXXXXXXXX)'
     }
-    
+
     // Convert to standardized format if valid
     if (cleanedNumber.startsWith('0')) {
       formData.value.phone = '+63' + cleanedNumber.slice(1)
     }
-    
+
     return null
   },
   address: (value) => {
@@ -72,7 +69,7 @@ const rules = {
   company: (value) => {
     if (!value) return 'Company name is required'
     return null
-  }
+  },
 }
 
 // Validation methods
@@ -86,8 +83,8 @@ const validateField = (field) => {
 }
 
 const validateForm = () => {
-  Object.keys(rules).forEach(field => validateField(field))
-  return Object.values(errors.value).every(error => error === null)
+  Object.keys(rules).forEach((field) => validateField(field))
+  return Object.values(errors.value).every((error) => error === null)
 }
 
 // Image handling
@@ -112,10 +109,10 @@ const handleImageUpload = (event) => {
 // Form submission
 const handleSubmit = () => {
   if (validateForm()) {
-    // Add client through store
-    store.addClient({ ...formData.value })
-    resetForm()
+    const clientData = { ...formData.value }
+    emit('submit', clientData)
     emit('close')
+    resetForm()
   }
 }
 
@@ -156,15 +153,8 @@ const closeModal = () => {
             />
           </div>
           <div class="upload-button">
-            <label for="profile-upload" class="custom-file-upload">
-              Upload Picture
-            </label>
-            <input
-              type="file"
-              id="profile-upload"
-              accept="image/*"
-              @change="handleImageUpload"
-            />
+            <label for="profile-upload" class="custom-file-upload"> Upload Picture </label>
+            <input type="file" id="profile-upload" accept="image/*" @change="handleImageUpload" />
             <span v-if="errors.profilePicture" class="error-message">
               {{ errors.profilePicture }}
             </span>
@@ -180,7 +170,7 @@ const closeModal = () => {
               id="firstName"
               v-model="formData.firstName"
               @blur="validateField('firstName')"
-              :class="{ 'error': touched.firstName && errors.firstName }"
+              :class="{ error: touched.firstName && errors.firstName }"
             />
             <span v-if="touched.firstName && errors.firstName" class="error-message">
               {{ errors.firstName }}
@@ -194,7 +184,7 @@ const closeModal = () => {
               id="lastName"
               v-model="formData.lastName"
               @blur="validateField('lastName')"
-              :class="{ 'error': touched.lastName && errors.lastName }"
+              :class="{ error: touched.lastName && errors.lastName }"
             />
             <span v-if="touched.lastName && errors.lastName" class="error-message">
               {{ errors.lastName }}
@@ -209,7 +199,7 @@ const closeModal = () => {
             id="email"
             v-model="formData.email"
             @blur="validateField('email')"
-            :class="{ 'error': touched.email && errors.email }"
+            :class="{ error: touched.email && errors.email }"
           />
           <span v-if="touched.email && errors.email" class="error-message">
             {{ errors.email }}
@@ -223,7 +213,7 @@ const closeModal = () => {
             id="phone"
             v-model="formData.phone"
             @blur="validateField('phone')"
-            :class="{ 'error': touched.phone && errors.phone }"
+            :class="{ error: touched.phone && errors.phone }"
             placeholder="+63 9XX XXX XXXX"
           />
           <span v-if="touched.phone && errors.phone" class="error-message">
@@ -239,7 +229,7 @@ const closeModal = () => {
             id="company"
             v-model="formData.company"
             @blur="validateField('company')"
-            :class="{ 'error': touched.company && errors.company }"
+            :class="{ error: touched.company && errors.company }"
           />
           <span v-if="touched.company && errors.company" class="error-message">
             {{ errors.company }}
@@ -253,7 +243,7 @@ const closeModal = () => {
             id="address"
             v-model="formData.address"
             @blur="validateField('address')"
-            :class="{ 'error': touched.address && errors.address }"
+            :class="{ error: touched.address && errors.address }"
           />
           <span v-if="touched.address && errors.address" class="error-message">
             {{ errors.address }}
@@ -262,12 +252,8 @@ const closeModal = () => {
 
         <!-- Action Buttons -->
         <div class="button-group">
-          <button type="button" class="cancel-btn" @click="closeModal">
-            Cancel
-          </button>
-          <button type="submit" class="done-btn">
-            Add Client
-          </button>
+          <button type="button" class="cancel-btn" @click="closeModal">Cancel</button>
+          <button type="submit" class="done-btn">Add Client</button>
         </div>
       </form>
     </div>
@@ -388,7 +374,7 @@ const closeModal = () => {
   background-color: #e5e7eb;
 }
 
-input[type="file"] {
+input[type='file'] {
   display: none;
 }
 
@@ -399,7 +385,8 @@ input[type="file"] {
   margin-top: 1rem;
 }
 
-.cancel-btn, .done-btn {
+.cancel-btn,
+.done-btn {
   padding: 0.5rem 1rem;
   border-radius: 4px;
   font-weight: 500;
