@@ -100,8 +100,8 @@ const handleEditOrderSubmit = async (updatedOrder) => {
     await logAction({
       action: 'EDIT_ORDER',
       category: 'order',
-      details: `Edited order #${updatedOrder.id} - Customer: ${updatedOrder.customerName}`,
-      targetId: updatedOrder.id,
+      details: `Edited order #${updatedOrder.orderId} - Customer: ${updatedOrder.customerName}`,
+      targetId: updatedOrder.orderId,
     })
     closeEditOrderModal()
   } catch (error) {
@@ -120,8 +120,8 @@ const handleEditInvoiceSubmit = async (updatedInvoice) => {
     await logAction({
       action: 'EDIT_INVOICE',
       category: 'invoice',
-      details: `Edited invoice #${updatedInvoice.id} for order #${updatedInvoice.orderId}`,
-      targetId: updatedInvoice.id,
+      details: `Edited invoice #${updatedInvoice.invoiceId} for order #${updatedInvoice.orderId}`,
+      targetId: updatedInvoice.invoiceId,
     })
     closeEditInvoiceModal()
   } catch (error) {

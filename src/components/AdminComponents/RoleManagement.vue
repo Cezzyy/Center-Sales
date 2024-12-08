@@ -2,11 +2,11 @@
 import { ref, computed, watch } from 'vue'
 import { useActivityLog } from '@/composables/useActivityLog'
 import { usePermissionsStore } from '@/stores/permissionsStore'
-import { useAuthStore } from '@/stores/authStore'
+// import { useAuthStore } from '@/stores/authStore'
 
 // Initialize stores and activity logger
 const permissionsStore = usePermissionsStore()
-const authStore = useAuthStore()
+// const authStore = useAuthStore()
 const { logAction } = useActivityLog()
 
 // Get available permissions from store
@@ -42,8 +42,10 @@ const formErrors = ref({})
 // Computed Properties
 const filteredRoles = computed(() => {
   return roles.value.filter((role) => {
-    return role.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+    return (
+      role.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
       role.description.toLowerCase().includes(searchQuery.value.toLowerCase())
+    )
   })
 })
 
@@ -115,18 +117,18 @@ const addRole = async () => {
 
   try {
     const { name, permissions } = roleForm.value
-    
+
     // Add role to permissions store
     permissionsStore.addRole(name, permissions)
-    
+
     // Log the action
     await logAction({
       action: 'CREATE_ROLE',
       category: 'role',
       details: `Created new role: ${name} with permissions: ${permissions.join(', ')}`,
-      targetId: name
+      targetId: name,
     })
-    
+
     showModal.value = false
     resetForm()
   } catch (e) {
@@ -146,16 +148,16 @@ const editRole = async (roleId) => {
 
     const { name, permissions } = roleForm.value
     const oldPermissions = permissionsStore.getRolePermissions(roleId)
-    
+
     // Update role permissions
     permissionsStore.updateRolePermissions(name, permissions)
-    
+
     // Log the action
     await logAction({
       action: 'UPDATE_ROLE',
       category: 'role',
       details: `Updated role ${name}: Permissions changed from [${oldPermissions.join(', ')}] to [${permissions.join(', ')}]`,
-      targetId: roleId
+      targetId: roleId,
     })
 
     showModal.value = false
@@ -182,13 +184,13 @@ const deleteRole = async (roleId) => {
 
     // Delete role from permissions store
     permissionsStore.removeRole(roleId)
-    
+
     // Log the action
     await logAction({
       action: 'DELETE_ROLE',
       category: 'role',
       details: `Deleted role: ${roleId}`,
-      targetId: roleId
+      targetId: roleId,
     })
   } catch (e) {
     error.value = 'Failed to delete role'
@@ -362,11 +364,7 @@ watch(searchQuery, () => {
         >
           <div class="role-management__form-group">
             <label>Role Name:</label>
-            <input
-              type="text"
-              v-model="roleForm.name"
-              :class="{ error: formErrors.name }"
-            />
+            <input type="text" v-model="roleForm.name" :class="{ error: formErrors.name }" />
             <span v-if="formErrors.name" class="error-message">
               {{ formErrors.name }}
             </span>
