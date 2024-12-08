@@ -1,14 +1,14 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { useReportsStore } from '@/stores/reportsStore'
+// import { useReportsStore } from '@/stores/reportsStore'
 import { useOrderInvoiceStore } from '@/stores/salesStore'
 
 const props = defineProps({
-  modelValue: Boolean
+  modelValue: Boolean,
 })
 
-const emit = defineEmits(['update:modelValue'])
-const reportsStore = useReportsStore()
+const emit = defineEmits(['update:modelValue', 'submit'])
+// const reportsStore = useReportsStore()
 const orderStore = useOrderInvoiceStore()
 
 const errors = ref({})
@@ -32,19 +32,20 @@ const minDueDate = computed(() => {
 // Get selected order details
 const selectedOrder = computed(() => {
   if (!selectedOrderId.value) return null
-  return orders.value.find(order => order.orderId === selectedOrderId.value)
+  return orders.value.find((order) => order.orderId === selectedOrderId.value)
 })
 
 // Computed properties for form fields
 const orderDetails = computed(() => {
-  if (!selectedOrder.value) return {
-    customerName: '',
-    productName: '',
-    quantity: '',
-    amount: '',
-    salesRep: '',
-    date: ''
-  }
+  if (!selectedOrder.value)
+    return {
+      customerName: '',
+      productName: '',
+      quantity: '',
+      amount: '',
+      salesRep: '',
+      date: '',
+    }
 
   return {
     customerName: selectedOrder.value.customerName,
@@ -52,13 +53,13 @@ const orderDetails = computed(() => {
     quantity: selectedOrder.value.quantity,
     amount: selectedOrder.value.amount,
     salesRep: selectedOrder.value.salesRepresentative,
-    date: selectedOrder.value.date
+    date: selectedOrder.value.date,
   }
 })
 
 const validateForm = () => {
   errors.value = {}
-  
+
   if (!selectedOrderId.value) {
     errors.value.order = 'Please select an order'
   }
@@ -91,12 +92,12 @@ const handleSubmit = () => {
       dueDate: dueDate.value,
       status: 'Pending',
       paymentStatus: 'Unpaid',
-      date: new Date().toISOString().split('T')[0]
+      date: new Date().toISOString().split('T')[0],
     }
 
-    // Add report to store
-    reportsStore.addReport(reportData)
-    
+    // Emit report data to parent instead of calling store directly
+    emit('submit', reportData)
+
     // Close modal and reset form
     closeModal()
   }
@@ -109,7 +110,16 @@ const handleSubmit = () => {
       <div class="modal-header">
         <h3 class="modal-title">Create Report</h3>
         <button @click="closeModal" class="close-button">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="close-icon">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="close-icon"
+          >
             <path d="M18 6L6 18M6 6l12 12"></path>
           </svg>
         </button>
@@ -122,11 +132,11 @@ const handleSubmit = () => {
             <div class="form-columns">
               <div class="form-group">
                 <label>Report ID</label>
-                <input 
-                  type="text" 
-                  :value="generatedReportId" 
-                  disabled 
-                  class="form-control disabled-input" 
+                <input
+                  type="text"
+                  :value="generatedReportId"
+                  disabled
+                  class="form-control disabled-input"
                 />
               </div>
 
@@ -137,11 +147,7 @@ const handleSubmit = () => {
                   :class="['form-control', { 'is-invalid': errors.order }]"
                 >
                   <option value="">Choose an order</option>
-                  <option
-                    v-for="order in orders"
-                    :key="order.orderId"
-                    :value="order.orderId"
-                  >
+                  <option v-for="order in orders" :key="order.orderId" :value="order.orderId">
                     {{ order.orderId }} - {{ order.customerName }}
                   </option>
                 </select>
@@ -262,27 +268,39 @@ const handleSubmit = () => {
               <div class="preview-data">
                 <div class="preview-row">
                   <span class="preview-label">Order ID:</span>
-                  <span class="preview-value">{{ selectedOrder ? selectedOrder.orderId : '' }}</span>
+                  <span class="preview-value">{{
+                    selectedOrder ? selectedOrder.orderId : ''
+                  }}</span>
                 </div>
                 <div class="preview-row">
                   <span class="preview-label">Customer Name:</span>
-                  <span class="preview-value">{{ selectedOrder ? selectedOrder.customerName : '' }}</span>
+                  <span class="preview-value">{{
+                    selectedOrder ? selectedOrder.customerName : ''
+                  }}</span>
                 </div>
                 <div class="preview-row">
                   <span class="preview-label">Product:</span>
-                  <span class="preview-value">{{ selectedOrder ? selectedOrder.productName : '' }}</span>
+                  <span class="preview-value">{{
+                    selectedOrder ? selectedOrder.productName : ''
+                  }}</span>
                 </div>
                 <div class="preview-row">
                   <span class="preview-label">Quantity:</span>
-                  <span class="preview-value">{{ selectedOrder ? selectedOrder.quantity : '' }}</span>
+                  <span class="preview-value">{{
+                    selectedOrder ? selectedOrder.quantity : ''
+                  }}</span>
                 </div>
                 <div class="preview-row">
                   <span class="preview-label">Amount (PHP):</span>
-                  <span class="preview-value">₱ {{ selectedOrder ? selectedOrder.amount : '' }}</span>
+                  <span class="preview-value"
+                    >₱ {{ selectedOrder ? selectedOrder.amount : '' }}</span
+                  >
                 </div>
                 <div class="preview-row">
                   <span class="preview-label">Sales Representative:</span>
-                  <span class="preview-value">{{ selectedOrder ? selectedOrder.salesRepresentative : '' }}</span>
+                  <span class="preview-value">{{
+                    selectedOrder ? selectedOrder.salesRepresentative : ''
+                  }}</span>
                 </div>
                 <div class="preview-row">
                   <span class="preview-label">Order Date:</span>
@@ -637,7 +655,7 @@ const handleSubmit = () => {
 }
 
 .form-group.required label::after {
-  content: "*";
+  content: '*';
   color: #ef4444;
   margin-left: 0.25rem;
 }

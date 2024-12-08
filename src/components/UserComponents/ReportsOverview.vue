@@ -52,7 +52,7 @@ const handleSort = (column) => {
     action: 'SORT_REPORTS',
     category: 'reports',
     details: `Reports sorted by ${column} in ${sortDirection.value} order`,
-    additionalData: { column, direction: sortDirection.value }
+    additionalData: { column, direction: sortDirection.value },
   })
 }
 
@@ -64,7 +64,7 @@ const changePage = (page) => {
     action: 'CHANGE_PAGE',
     category: 'reports',
     details: `Navigated to reports page ${page}`,
-    additionalData: { page, totalPages: totalPages.value }
+    additionalData: { page, totalPages: totalPages.value },
   })
 }
 
@@ -79,7 +79,9 @@ const exportToExcel = async () => {
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Reports')
     const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
-    const data = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const data = new Blob([excelBuffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    })
     saveAs(data, 'reports.xlsx')
 
     logAction({
@@ -89,8 +91,8 @@ const exportToExcel = async () => {
       additionalData: {
         format: 'xlsx',
         count: reports.value.length,
-        dateRange: { start: startDate.value, end: endDate.value }
-      }
+        dateRange: { start: startDate.value, end: endDate.value },
+      },
     })
   } catch (error) {
     console.error('Failed to export to Excel:', error)
@@ -104,7 +106,7 @@ const exportToCSV = async () => {
   }
 
   try {
-    const csvContent = reports.value.map(report => Object.values(report).join(',')).join('\n')
+    const csvContent = reports.value.map((report) => Object.values(report).join(',')).join('\n')
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' })
     saveAs(blob, 'reports.csv')
 
@@ -115,8 +117,8 @@ const exportToCSV = async () => {
       additionalData: {
         format: 'csv',
         count: reports.value.length,
-        dateRange: { start: startDate.value, end: endDate.value }
-      }
+        dateRange: { start: startDate.value, end: endDate.value },
+      },
     })
   } catch (error) {
     console.error('Failed to export to CSV:', error)
@@ -130,13 +132,13 @@ const addReport = async (reportData) => {
   }
 
   try {
-    await reportsStore.addReport(reportData)
+    const newReport = await reportsStore.addReport(reportData)
     showAddReportModal.value = false
-    logAction({
+    await logAction({
       action: 'CREATE_REPORT',
-      category: 'reports',
-      details: 'Created new report',
-      additionalData: { reportData }
+      category: 'report',
+      details: `Created new report #${reportData.reportId} for order #${reportData.orderId} - Customer: ${reportData.customerName}`,
+      targetId: reportData.reportId
     })
   } catch (error) {
     console.error('Failed to create report:', error)
@@ -154,8 +156,8 @@ watch([startDate, endDate, searchQuery], () => {
     details: 'Applied report filters',
     additionalData: {
       dateRange: { start: startDate.value, end: endDate.value },
-      searchQuery: searchQuery.value
-    }
+      searchQuery: searchQuery.value,
+    },
   })
 })
 </script>
@@ -177,33 +179,17 @@ watch([startDate, endDate, searchQuery], () => {
 
       <div class="search-export">
         <div class="search-box">
-          <input
-            type="text"
-            v-model="searchQuery"
-            placeholder="Search reports..."
-          />
+          <input type="text" v-model="searchQuery" placeholder="Search reports..." />
         </div>
 
         <div class="export-buttons">
-          <button 
-            v-if="can.exportData()"
-            @click="exportToExcel" 
-            class="btn-export"
-          >
+          <button v-if="can.exportData()" @click="exportToExcel" class="btn-export">
             Export to Excel
           </button>
-          <button 
-            v-if="can.exportData()"
-            @click="exportToCSV" 
-            class="btn-export"
-          >
+          <button v-if="can.exportData()" @click="exportToCSV" class="btn-export">
             Export to CSV
           </button>
-          <button 
-            v-if="can.write()"
-            @click="showAddReportModal = true" 
-            class="btn-add"
-          >
+          <button v-if="can.write()" @click="showAddReportModal = true" class="btn-add">
             Add Report
           </button>
         </div>
@@ -259,12 +245,7 @@ watch([startDate, endDate, searchQuery], () => {
             <td>{{ report.status }}</td>
             <td>{{ report.paymentStatus }}</td>
             <td v-if="can.write()">
-              <button
-                class="btn-edit"
-                @click="editReport(report)"
-              >
-                Edit
-              </button>
+              <button class="btn-edit" @click="editReport(report)">Edit</button>
             </td>
           </tr>
         </tbody>
@@ -274,16 +255,16 @@ watch([startDate, endDate, searchQuery], () => {
       <div v-else class="empty-state">
         <div class="empty-state__content">
           <div class="empty-state__icon-wrapper">
-            <font-awesome-icon 
-              :icon="faChartLine" 
-              class="empty-state__icon"
-            />
+            <font-awesome-icon :icon="faChartLine" class="empty-state__icon" />
           </div>
           <h3 class="empty-state__title">No Reports Found</h3>
-          <p class="empty-state__message">There are no reports matching your current filters. Try adjusting your search criteria or add a new report.</p>
-          <button 
+          <p class="empty-state__message">
+            There are no reports matching your current filters. Try adjusting your search criteria
+            or add a new report.
+          </p>
+          <button
             v-if="can.write()"
-            @click="showAddReportModal = true" 
+            @click="showAddReportModal = true"
             class="btn-add empty-state__button"
           >
             <font-awesome-icon :icon="faPlus" />
@@ -294,11 +275,7 @@ watch([startDate, endDate, searchQuery], () => {
 
       <!-- Pagination -->
       <div class="pagination" v-if="reports.length > 0">
-        <button
-          :disabled="currentPage === 1"
-          @click="changePage(currentPage - 1)"
-          class="btn-page"
-        >
+        <button :disabled="currentPage === 1" @click="changePage(currentPage - 1)" class="btn-page">
           Previous
         </button>
         <span>Page {{ currentPage }} of {{ totalPages }}</span>
@@ -313,10 +290,7 @@ watch([startDate, endDate, searchQuery], () => {
     </section>
 
     <!-- Add Report Modal -->
-    <AddReportModal
-      v-model="showAddReportModal"
-      :orders="orderStore.orders"
-    />
+    <AddReportModal v-model="showAddReportModal" :orders="orderStore.orders" @submit="addReport" />
   </div>
 </template>
 
@@ -324,9 +298,7 @@ watch([startDate, endDate, searchQuery], () => {
 .reports-overview {
   padding: 2rem;
   background-color: #f8f9fa;
-  border-radius: 8px;
 }
-
 .filters-section {
   margin-bottom: 2rem;
   background: white;
