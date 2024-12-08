@@ -6,7 +6,7 @@ import { useActivityLog } from '@/composables/useActivityLog'
 import { usePermissions } from '@/composables/usePermissions'
 
 // Initialize activity logger and permissions
-const { logClientAction } = useActivityLog()
+const { logAction } = useActivityLog()
 const { can } = usePermissions()
 
 // Lazy load modals for better initial load performance
@@ -51,14 +51,15 @@ const handleAddClient = async (clientData) => {
   }
 
   try {
-    await store.addClient(clientData)
-
-    // Log the client creation
-    await logClientAction(
-      'CREATE_CLIENT',
-      `Created new client: ${clientData.firstName} ${clientData.lastName} from ${clientData.company}`,
-      clientData.id,
-    )
+    const result = await store.addClient(clientData)
+    
+    // Log the client addition
+    await logAction({
+      action: 'ADD_CLIENT',
+      category: 'client',
+      details: `Added client: ${clientData.firstName} ${clientData.lastName} from ${clientData.company}`,
+      targetId: result.id
+    })
 
     store.closeModal()
   } catch (error) {
@@ -75,16 +76,11 @@ const handleEditClient = async (clientData) => {
   try {
     const oldClient = { ...store.getClientById(clientData.id) }
     await store.updateClient(clientData)
-
-    // Log the client update with meaningful changes
+    
+    // Track changes
     const changes = []
-    if (
-      oldClient.firstName !== clientData.firstName ||
-      oldClient.lastName !== clientData.lastName
-    ) {
-      changes.push(
-        `name from ${oldClient.firstName} ${oldClient.lastName} to ${clientData.firstName} ${clientData.lastName}`,
-      )
+    if (oldClient.firstName !== clientData.firstName || oldClient.lastName !== clientData.lastName) {
+      changes.push(`name from ${oldClient.firstName} ${oldClient.lastName} to ${clientData.firstName} ${clientData.lastName}`)
     }
     if (oldClient.company !== clientData.company) {
       changes.push(`company from ${oldClient.company} to ${clientData.company}`)
@@ -99,11 +95,14 @@ const handleEditClient = async (clientData) => {
       changes.push(`address from ${oldClient.address} to ${clientData.address}`)
     }
 
-    await logClientAction(
-      'UPDATE_CLIENT',
-      `Updated client: ${oldClient.firstName} ${oldClient.lastName} - Changed ${changes.join(', ')}`,
-      clientData.id,
-    )
+    if (changes.length > 0) {
+      await logAction({
+        action: 'EDIT_CLIENT',
+        category: 'client',
+        details: `Edited client: ${clientData.firstName} ${clientData.lastName} - ${changes.join(', ')}`,
+        targetId: clientData.id
+      })
+    }
 
     store.closeEditModal()
   } catch (error) {
@@ -111,27 +110,29 @@ const handleEditClient = async (clientData) => {
   }
 }
 
-const handleDeleteClient = async (client) => {
+const handleDeleteClient = (client) => {
+  if (!can.write()) {
+    console.error('Permission denied: Cannot delete clients')
+    return
+  }
   clientToDelete.value = client
   showDeleteModal.value = true
 }
 
 const confirmDelete = async () => {
-  if (!can.delete()) {
-    console.error('Permission denied: Cannot delete clients')
-    return
-  }
+  if (!clientToDelete.value) return
 
   try {
     const client = clientToDelete.value
     await store.deleteClient(client.id)
-
-    // Log the deletion
-    await logClientAction(
-      'DELETE_CLIENT',
-      `Deleted client: ${client.firstName} ${client.lastName} from ${client.company}`,
-      client.id,
-    )
+    
+    // Log the client deletion
+    await logAction({
+      action: 'DELETE_CLIENT',
+      category: 'client',
+      details: `Deleted client: ${client.firstName} ${client.lastName} from ${client.company}`,
+      targetId: client.id
+    })
 
     showDeleteModal.value = false
     clientToDelete.value = null

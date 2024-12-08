@@ -5,11 +5,13 @@ import { useActivityLog } from '@/composables/useActivityLog'
 import { usePermissions } from '@/composables/usePermissions'
 import { watch } from 'vue'
 
-const activityLog = useActivityLog();
+const activityLog = useActivityLog()
 const { can } = usePermissions()
 
 const AddProductModal = defineAsyncComponent(() => import('../UserSideModals/AddProductModal.vue'))
-const EditProductModal = defineAsyncComponent(() => import('../UserSideModals/EditProductModal.vue'))
+const EditProductModal = defineAsyncComponent(
+  () => import('../UserSideModals/EditProductModal.vue'),
+)
 
 const store = useProductsStore()
 
@@ -21,7 +23,7 @@ const openEditProductModal = (product) => {
     category: 'products',
     details: `Opened edit modal for product: ${product.name}`,
     targetId: product.id,
-    additionalData: { productName: product.name }
+    additionalData: { productName: product.name },
   })
 }
 
@@ -36,7 +38,7 @@ const handleAddProduct = () => {
     action: 'ADD_PRODUCT',
     category: 'products',
     details: 'Added new product to inventory',
-    additionalData: { product: store.newProduct }
+    additionalData: { product: store.newProduct },
   })
 }
 
@@ -54,8 +56,8 @@ const handleEditProduct = () => {
     targetId: store.editProduct.id,
     additionalData: {
       productName: store.editProduct.name,
-      changes: store.editProduct
-    }
+      changes: store.editProduct,
+    },
   })
 }
 
@@ -70,27 +72,33 @@ const handleDeleteProduct = (productId) => {
     action: 'DELETE_PRODUCT',
     category: 'products',
     details: 'Deleted product from inventory',
-    targetId: productId
+    targetId: productId,
   })
 }
 
-watch(() => store.searchQuery, (newQuery) => {
-  activityLog.logAction({
-    action: 'APPLY_SEARCH',
-    category: 'products',
-    details: 'Applied product search filter',
-    additionalData: { searchQuery: newQuery }
-  })
-})
+watch(
+  () => store.searchQuery,
+  (newQuery) => {
+    activityLog.logAction({
+      action: 'APPLY_SEARCH',
+      category: 'products',
+      details: 'Applied product search filter',
+      additionalData: { searchQuery: newQuery },
+    })
+  },
+)
 
-watch(() => store.selectedCategory, (newCategory) => {
-  activityLog.logAction({
-    action: 'FILTER_CATEGORY',
-    category: 'products',
-    details: 'Changed product category filter',
-    additionalData: { category: newCategory || 'All Categories' }
-  })
-})
+watch(
+  () => store.selectedCategory,
+  (newCategory) => {
+    activityLog.logAction({
+      action: 'FILTER_CATEGORY',
+      category: 'products',
+      details: 'Changed product category filter',
+      additionalData: { category: newCategory || 'All Categories' },
+    })
+  },
+)
 
 const handleSort = (column) => {
   store.handleSort(column)
@@ -100,8 +108,8 @@ const handleSort = (column) => {
     details: `Sorted products list`,
     additionalData: {
       column,
-      direction: store.sortDirection
-    }
+      direction: store.sortDirection,
+    },
   })
 }
 </script>
@@ -153,7 +161,13 @@ const handleSort = (column) => {
 
     <!-- Actions Section -->
     <section class="actions-section">
-      <button @click="store.exportToExcel" class="action-button export-button">Export to Excel</button>
+      <button
+        v-if="can.exportData()"
+        @click="store.exportToExcel"
+        class="action-button export-button"
+      >
+        Export to Excel
+      </button>
     </section>
 
     <AddProductModal v-model="store.showAddProductModal" @submit="handleAddProduct" />
@@ -181,7 +195,7 @@ const handleSort = (column) => {
             <td>{{ product.sku }}</td>
             <td>{{ product.category }}</td>
             <td>{{ product.quantity }}</td>
-            <td>${{ product.price.toFixed(2) }}</td>
+            <td>₱{{ product.price.toFixed(2) }}</td>
             <td>
               <span :class="['status', product.quantity > 0 ? 'in-stock' : 'out-of-stock']">
                 {{ product.quantity > 0 ? 'In Stock' : 'Out of Stock' }}

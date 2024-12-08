@@ -14,7 +14,7 @@ const EditInvoiceModal = defineAsyncComponent(
 )
 
 // Initialize activity logger and permissions
-const { logOrderAction, logInvoiceAction } = useActivityLog()
+const { logAction, logInvoiceAction } = useActivityLog()
 const { can } = usePermissions()
 
 // Initialize store
@@ -96,36 +96,36 @@ const handleEditOrderSubmit = async (updatedOrder) => {
   }
 
   try {
-    const oldOrder = { ...store.getOrderById(updatedOrder.id) }
     await store.handleEditOrderSubmit(updatedOrder)
-
-    // Log order update with changes
-    const changes = []
-    if (oldOrder.customerName !== updatedOrder.customerName) {
-      changes.push(`customer from ${oldOrder.customerName} to ${updatedOrder.customerName}`)
-    }
-    if (oldOrder.productName !== updatedOrder.productName) {
-      changes.push(`product from ${oldOrder.productName} to ${updatedOrder.productName}`)
-    }
-    if (oldOrder.quantity !== updatedOrder.quantity) {
-      changes.push(`quantity from ${oldOrder.quantity} to ${updatedOrder.quantity}`)
-    }
-    if (oldOrder.amount !== updatedOrder.amount) {
-      changes.push(`amount from ${oldOrder.amount} to ${updatedOrder.amount}`)
-    }
-    if (oldOrder.status !== updatedOrder.status) {
-      changes.push(`status from ${oldOrder.status} to ${updatedOrder.status}`)
-    }
-
-    await logOrderAction(
-      'UPDATE_ORDER',
-      `Updated order #${updatedOrder.id} - Changed ${changes.join(', ')}`,
-      updatedOrder.id,
-      { changes },
-    )
+    await logAction({
+      action: 'EDIT_ORDER',
+      category: 'order',
+      details: `Edited order #${updatedOrder.id} - Customer: ${updatedOrder.customerName}`,
+      targetId: updatedOrder.id,
+    })
     closeEditOrderModal()
   } catch (error) {
     console.error('Failed to update order:', error)
+  }
+}
+
+const handleEditInvoiceSubmit = async (updatedInvoice) => {
+  if (!can.write()) {
+    console.error('Permission denied: Cannot edit invoices')
+    return
+  }
+
+  try {
+    await store.handleEditInvoiceSubmit(updatedInvoice)
+    await logAction({
+      action: 'EDIT_INVOICE',
+      category: 'invoice',
+      details: `Edited invoice #${updatedInvoice.id} for order #${updatedInvoice.orderId}`,
+      targetId: updatedInvoice.id,
+    })
+    closeEditInvoiceModal()
+  } catch (error) {
+    console.error('Failed to update invoice:', error)
   }
 }
 
@@ -137,12 +137,12 @@ const handleAddInvoiceSubmit = async (newInvoice) => {
 
   try {
     await store.handleAddInvoiceSubmit(newInvoice)
-    await logInvoiceAction(
-      'CREATE_INVOICE',
-      `Created new invoice for order #${newInvoice.orderId} - Amount: ${newInvoice.amount}, Due: ${formatDate(newInvoice.dueDate)}`,
-      newInvoice.id,
-      { orderId: newInvoice.orderId },
-    )
+    await logAction({
+      action: 'CREATE_INVOICE',
+      category: 'invoice',
+      details: `Created new invoice for order #${newInvoice.orderId} - Amount: ${newInvoice.amount}, Due: ${formatDate(newInvoice.dueDate)}`,
+      targetId: newInvoice.id,
+    })
     closeAddInvoiceModal()
   } catch (error) {
     console.error('Failed to create invoice:', error)
@@ -157,16 +157,12 @@ const handleAddSalesSubmit = async (salesData) => {
 
   try {
     await store.handleAddSalesSubmit(salesData)
-    await logOrderAction(
-      'CREATE_ORDER',
-      `Created new order - Customer: ${salesData.customerName}, Product: ${salesData.productName}, Amount: ${salesData.amount}`,
-      salesData.id,
-      {
-        customerName: salesData.customerName,
-        productName: salesData.productName,
-        amount: salesData.amount,
-      },
-    )
+    await logAction({
+      action: 'CREATE_ORDER',
+      category: 'order',
+      details: `Created new order - Customer: ${salesData.customerName}, Product: ${salesData.productName}, Amount: ${salesData.amount}`,
+      targetId: salesData.id,
+    })
     closeAddSalesModal()
   } catch (error) {
     console.error('Failed to create sale:', error)
