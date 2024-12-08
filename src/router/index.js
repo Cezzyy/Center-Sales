@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/authStore'
+import { setupRouteGuards } from './guards'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -32,7 +33,12 @@ const router = createRouter({
       path: '/admin', 
       name: 'admin', 
       component: () => import('../views/AdminView.vue'),
-      meta: { requiresAuth: true, requiresAdmin: true }
+      meta: { requiresAuth: true, requiredPermissions: ['manage_users', 'manage_roles'] }
+    },
+    { 
+      path: '/unauthorized', 
+      name: 'unauthorized', 
+      component: () => import('../views/UnauthorizedView.vue')
     },
   ],
 })
@@ -62,5 +68,8 @@ router.beforeEach(async (to, from, next) => {
     next()
   }
 })
+
+// Setup route guards
+setupRouteGuards(router)
 
 export default router
