@@ -1,28 +1,37 @@
 <script setup>
-import { defineAsyncComponent, computed } from 'vue'
+import { defineAsyncComponent, computed, ref } from 'vue'
 import { useClientStore } from '@/stores/clientStore'
+import { useAuthStore } from '@/stores/authStore'
 import { storeToRefs } from 'pinia'
+import { useActivityLog } from '@/composables/useActivityLog'
+import { usePermissions } from '@/composables/usePermissions'
+
+// Initialize activity logger and permissions
+const store = useClientStore()
+const authStore = useAuthStore()
+const { logAction } = useActivityLog()
+const { can } = usePermissions()
 
 // Lazy load modals for better initial load performance
-const AddClientModal = defineAsyncComponent(() => 
-  import('../UserSideModals/AddClientModal.vue')
+const AddClientModal = defineAsyncComponent(() => import('../UserSideModals/AddClientModal.vue'))
+const EditClientModal = defineAsyncComponent(() => import('../UserSideModals/EditClientModal.vue'))
+const DeleteConfirmationModal = defineAsyncComponent(
+  () => import('../UserSideModals/DeleteConfirmationModal.vue'),
 )
-const EditClientModal = defineAsyncComponent(() => 
-  import('../UserSideModals/EditClientModal.vue')
-)
-
-// Initialize store
-const store = useClientStore()
 
 // Destructure only what we need from the store
-const { 
+const {
   searchQuery,
   filteredClients,
   currentPage,
   isModalOpen,
   showEditClientModal,
-  selectedClient 
+  selectedClient,
 } = storeToRefs(store)
+
+// Add state for delete confirmation
+const showDeleteModal = ref(false)
+const clientToDelete = ref(null)
 
 // Computed properties from store getters
 const hasClients = computed(() => filteredClients.value.length > 0)
@@ -36,31 +45,103 @@ const handleSearch = (event) => {
 }
 
 const handleAddClient = async (clientData) => {
+  if (!can.write()) {
+    console.error('Permission denied: Cannot add clients')
+    return
+  }
+
+  // Check if user is authenticated
+  if (!authStore.currentUser) {
+    console.error('User not authenticated')
+    return
+  }
+
   try {
-    await store.addClient(clientData)
-    store.closeModal()
+    const newClient = await store.addClient(clientData)
+    console.log('New client created:', newClient) // Debug log
+    
+    if (newClient && newClient.id) {
+      // Log the client addition
+      await logAction({
+        action: 'ADD_CLIENT',
+        category: 'client',
+        details: `Added client: ${clientData.firstName} ${clientData.lastName} from ${clientData.company}`,
+        targetId: newClient.id,
+        changes: {
+          firstName: clientData.firstName,
+          lastName: clientData.lastName,
+          email: clientData.email,
+          company: clientData.company,
+          phone: clientData.phone,
+        },
+      })
+    } else {
+      console.error('Failed to create client: No ID returned')
+    }
   } catch (error) {
     console.error('Failed to add client:', error)
   }
 }
 
 const handleEditClient = async (clientData) => {
+  if (!can.write()) {
+    console.error('Permission denied: Cannot edit clients')
+    return
+  }
+
   try {
     await store.updateClient(clientData)
-    store.closeEditModal()
+    logAction({
+      action: 'EDIT CLIENT',
+      category: 'client',
+      targetId: clientData.id,
+      details: `Updated client: ${clientData.firstName} ${clientData.lastName}`,
+      changes: {
+        firstName: clientData.firstName,
+        lastName: clientData.lastName,
+        email: clientData.email,
+        company: clientData.company,
+      },
+    })
   } catch (error) {
     console.error('Failed to update client:', error)
   }
 }
 
-const handleDeleteClient = async (clientId) => {
+const handleDeleteClient = (client) => {
+  if (!can.write()) {
+    console.error('Permission denied: Cannot delete clients')
+    return
+  }
+  clientToDelete.value = client
+  showDeleteModal.value = true
+}
+
+const confirmDelete = async () => {
+  if (!clientToDelete.value) return
+
   try {
-    if (confirm('Are you sure you want to delete this client?')) {
-      await store.deleteClient(clientId)
-    }
+    const client = clientToDelete.value
+    await store.deleteClient(client.id)
+
+    // Log the client deletion
+    await logAction({
+      action: 'DELETE_CLIENT',
+      category: 'client',
+      details: `Deleted client: ${client.firstName} ${client.lastName} from ${client.company}`,
+      targetId: client.id,
+    })
+
+    showDeleteModal.value = false
+    clientToDelete.value = null
   } catch (error) {
     console.error('Failed to delete client:', error)
   }
+}
+
+const cancelDelete = () => {
+  showDeleteModal.value = false
+  clientToDelete.value = null
 }
 
 // Navigation handlers
@@ -86,8 +167,8 @@ const goToPreviousPage = () => {
       <div class="section-header">
         <h2 class="section-title">Clients List</h2>
         <div class="search-container">
-          <input 
-            type="text" 
+          <input
+            type="text"
             :value="searchQuery"
             @input="handleSearch"
             placeholder="Search clients..."
@@ -95,24 +176,33 @@ const goToPreviousPage = () => {
           />
         </div>
       </div>
-      <button class="add-button" @click="store.openModal">
+      <button v-if="can.write()" class="add-button" @click="store.openModal">
         <span class="plus-icon">+</span>
         Add Client
       </button>
     </div>
 
     <!-- Modals -->
-    <AddClientModal 
-      :isModalOpen="isModalOpen" 
+    <AddClientModal
+      v-if="isModalOpen"
+      :isModalOpen="isModalOpen"
       @close="store.closeModal"
-      @add-client="handleAddClient"
+      @submit="handleAddClient"
     />
 
     <EditClientModal
       v-if="showEditClientModal"
       :clientData="selectedClient"
       @close="store.closeEditModal"
-      @save="handleEditClient"
+      @submit="handleEditClient"
+    />
+
+    <DeleteConfirmationModal
+      v-if="showDeleteModal"
+      :isOpen="showDeleteModal"
+      :client="clientToDelete"
+      @confirm="confirmDelete"
+      @cancel="cancelDelete"
     />
 
     <!-- Table Section -->
@@ -134,7 +224,7 @@ const goToPreviousPage = () => {
           <tr v-for="client in displayedClients" :key="client.id">
             <td>
               <div class="profile-pic">
-                <img 
+                <img
                   :src="client.profilePicture"
                   :alt="`${client.firstName} ${client.lastName}`"
                   loading="lazy"
@@ -148,16 +238,18 @@ const goToPreviousPage = () => {
             <td>{{ client.email }}</td>
             <td>{{ client.phone }}</td>
             <td class="actions">
-              <button 
-                class="edit-btn" 
+              <button
+                v-if="can.write()"
+                class="edit-btn"
                 @click="store.editClient(client)"
                 :title="`Edit ${client.firstName} ${client.lastName}`"
               >
                 Edit
               </button>
-              <button 
-                class="delete-btn" 
-                @click="handleDeleteClient(client.id)"
+              <button
+                v-if="can.delete()"
+                class="delete-btn"
+                @click="handleDeleteClient(client)"
                 :title="`Delete ${client.firstName} ${client.lastName}`"
               >
                 Delete
@@ -166,7 +258,7 @@ const goToPreviousPage = () => {
           </tr>
         </tbody>
       </table>
-      
+
       <!-- No Results Message -->
       <div v-else class="no-results">
         <div class="no-results-content">
@@ -178,9 +270,9 @@ const goToPreviousPage = () => {
 
       <!-- Pagination -->
       <div class="pagination" v-if="hasClients">
-        <button 
-          class="page-btn" 
-          @click="goToPreviousPage" 
+        <button
+          class="page-btn"
+          @click="goToPreviousPage"
           :disabled="currentPage === 1"
           title="Previous page"
         >

@@ -27,6 +27,17 @@ library.add(
   faSignOutAlt,
 )
 
+import { useAuthStore } from '../stores/authStore'
+import { useRouter } from 'vue-router'
+
+const authStore = useAuthStore()
+const router = useRouter()
+
+const handleLogout = () => {
+  authStore.logout()
+  router.push('/')
+}
+
 const isSidebarOpen = ref(false)
 const currentView = ref('Dashboard')
 const isProfileModalVisible = ref(false)
@@ -99,7 +110,7 @@ onUnmounted(() => {
     </header>
 
     <!-- Sidebar -->
-    <aside class="sidebar" :class="{ 'sidebar-open': isSidebarOpen }">
+    <aside :class="['sidebar', { 'sidebar-open': isSidebarOpen }]">
       <nav class="nav-menu">
         <a href="#" class="nav-item" @click="setView('Dashboard')">
           <font-awesome-icon :icon="['fas', 'chart-simple']" class="nav-icon" />
@@ -121,22 +132,20 @@ onUnmounted(() => {
           <font-awesome-icon :icon="['fas', 'boxes-stacked']" class="nav-icon" />
           <span class="nav-text">Products</span>
         </a>
-      </nav>
-      <div class="logout-container">
-        <a href="#" class="nav-item logout-button">
+        <div class="nav-item logout" @click="handleLogout">
           <font-awesome-icon :icon="['fas', 'sign-out-alt']" class="nav-icon" />
           <span class="nav-text">Logout</span>
-        </a>
-      </div>
+        </div>
+      </nav>
     </aside>
 
     <!-- Main Content -->
     <main class="main-content">
-      <component :is="currentView === 'Dashboard' ? HomeDashboard : null" />
-      <component :is="currentView === 'Clients' ? Clients : null" />
-      <component :is="currentView === 'Sales' ? Sales : null" />
-      <component :is="currentView === 'Reports' ? Reports : null" />
-      <component :is="currentView === 'Products' ? Products : null" />
+      <HomeDashboard v-if="currentView === 'Dashboard'" />
+      <Clients v-if="currentView === 'Clients'" />
+      <Sales v-if="currentView === 'Sales'" />
+      <Reports v-if="currentView === 'Reports'" />
+      <Products v-if="currentView === 'Products'" />
     </main>
   </div>
 </template>
@@ -268,21 +277,14 @@ h1 {
   letter-spacing: 0.01em;
 }
 
-.logout-container {
-  border-top: 1px solid #e2e8f0;
-  padding: 1rem 0;
+.logout {
+  margin-top: auto;
+  color: #dc2626;
 }
 
-.logout-button {
-  color: #ef4444;
-}
-
-.logout-button:hover {
+.logout:hover {
   background-color: #fee2e2;
-}
-
-.logout-button:hover::before {
-  background-color: #ef4444;
+  color: #dc2626;
 }
 
 .main-content {

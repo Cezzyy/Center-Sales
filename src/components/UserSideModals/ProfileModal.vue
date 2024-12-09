@@ -1,73 +1,86 @@
 <script setup>
-defineProps({
+import { useAuthStore } from '../../stores/authStore'
+import { usePermissionsStore } from '../../stores/permissionsStore'
+import { computed } from 'vue'
+
+const props = defineProps({
   isOpen: {
     type: Boolean,
     required: true,
-  },
-  userData: {
-    type: Object,
-    required: true,
-    default: () => ({
-      firstName: '',
-      lastName: '',
-      position: '',
-      email: '',
-      phoneNumber: '',
-      profilePicture: '',
-    }),
-  },
+  }
 })
 
-const emit = defineEmits(['close', 'editProfile'])
+const authStore = useAuthStore()
+const permissionsStore = usePermissionsStore()
+const currentUser = computed(() => authStore.currentUser)
+const userPermissions = computed(() => permissionsStore.getRolePermissions(currentUser.value?.role || ''))
+
+const emit = defineEmits(['close'])
 
 const handleClose = () => {
   emit('close')
 }
 
-const handleEditProfile = () => {
-  emit('editProfile')
+// Helper function to format permission name
+const formatPermissionName = (permission) => {
+  return permission
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
 }
 </script>
 
 <template>
-  <div v-if="isOpen" class="modal-overlay">
-    <div class="modal-container">
+  <div v-if="isOpen" class="modal-overlay" @click="handleClose">
+    <div class="modal-container" @click.stop>
       <button class="close-button" @click="handleClose">×</button>
 
       <div class="modal-content">
-        <!-- Left Side - Profile Picture -->
+        <!-- Left Side - Profile Picture and Role Badge -->
         <div class="profile-picture-section">
-          <img :src="userData.profilePicture" alt="Profile Picture" class="profile-picture" />
+          <div class="avatar">{{ currentUser?.username?.charAt(0) || 'U' }}</div>
+          <div class="role-badge" :class="currentUser?.role">
+            {{ currentUser?.role?.toUpperCase() }}
+          </div>
         </div>
 
         <!-- Right Side - Profile Information -->
         <div class="profile-info-section">
           <div class="info-group">
-            <label>First Name</label>
-            <p>{{ userData.firstName }}</p>
+            <label>Name</label>
+            <p>{{ currentUser?.username || 'Not Available' }}</p>
           </div>
 
           <div class="info-group">
-            <label>Last Name</label>
-            <p>{{ userData.lastName }}</p>
-          </div>
-
-          <div class="info-group">
-            <label>Company Position</label>
-            <p>{{ userData.position }}</p>
+            <label>Position</label>
+            <p>{{ currentUser?.position || 'Not Available' }}</p>
           </div>
 
           <div class="info-group">
             <label>Email Address</label>
-            <p>{{ userData.email }}</p>
+            <p>{{ currentUser?.email || 'Not Available' }}</p>
           </div>
 
           <div class="info-group">
-            <label>Phone Number</label>
-            <p>{{ userData.phoneNumber }}</p>
+            <label>Role</label>
+            <p class="role-text" :class="currentUser?.role">
+              {{ currentUser?.role?.toUpperCase() || 'Not Available' }}
+            </p>
           </div>
 
-          <button class="edit-button" @click="handleEditProfile">Edit Profile Information</button>
+          <!-- Permissions Section -->
+          <div class="permissions-section">
+            <label>Permissions</label>
+            <div class="permissions-list">
+              <div 
+                v-for="permission in userPermissions" 
+                :key="permission"
+                class="permission-badge"
+              >
+                {{ formatPermissionName(permission) }}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -90,12 +103,12 @@ const handleEditProfile = () => {
 
 .modal-container {
   background-color: white;
-  border-radius: 8px;
-  padding: 24px;
+  border-radius: 12px;
+  padding: 32px;
   width: 800px;
   max-width: 90%;
   position: relative;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
 }
 
 .close-button {
@@ -108,71 +121,135 @@ const handleEditProfile = () => {
   cursor: pointer;
   color: #666;
   padding: 4px 8px;
+  border-radius: 4px;
 }
 
 .close-button:hover {
-  color: #333;
+  background-color: #f3f4f6;
 }
 
 .modal-content {
   display: flex;
-  gap: 24px;
+  gap: 32px;
 }
 
 .profile-picture-section {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-}
-
-.profile-picture {
-  width: 200px;
-  height: 200px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid #eee;
-}
-
-.profile-info-section {
-  flex: 2;
+  flex: 0 0 200px;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 16px;
 }
 
-.info-group {
+.avatar {
+  width: 150px;
+  height: 150px;
+  border-radius: 75px;
+  background-color: #2563eb;
+  color: white;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  justify-content: center;
+  align-items: center;
+  font-size: 48px;
+  font-weight: bold;
+}
+
+.role-badge {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.role-badge.admin {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.role-badge.user {
+  background-color: #e0e7ff;
+  color: #3730a3;
+}
+
+.profile-info-section {
+  flex: 1;
+}
+
+.info-group {
+  margin-bottom: 24px;
 }
 
 .info-group label {
+  display: block;
   font-size: 14px;
-  color: #666;
-  font-weight: 500;
+  color: #6b7280;
+  margin-bottom: 4px;
 }
 
 .info-group p {
   font-size: 16px;
-  color: #333;
-  margin: 0;
-  padding: 4px 0;
-}
-
-.edit-button {
-  margin-top: 16px;
-  background-color: #4a90e2;
-  color: white;
-  border: none;
-  padding: 12px 24px;
-  border-radius: 6px;
-  cursor: pointer;
+  color: #1f2937;
   font-weight: 500;
-  transition: background-color 0.2s;
 }
 
-.edit-button:hover {
-  background-color: #357abd;
+.role-text {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.role-text.admin {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.role-text.user {
+  background-color: #e0e7ff;
+  color: #3730a3;
+}
+
+/* New Permissions Styles */
+.permissions-section {
+  margin-top: 24px;
+}
+
+.permissions-section label {
+  display: block;
+  font-size: 14px;
+  color: #6b7280;
+  margin-bottom: 12px;
+}
+
+.permissions-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.permission-badge {
+  background-color: #f3f4f6;
+  color: #374151;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 14px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+}
+
+.permission-badge:hover {
+  background-color: #e5e7eb;
+}
+
+@media (max-width: 640px) {
+  .modal-content {
+    flex-direction: column;
+  }
+
+  .profile-picture-section {
+    flex: 0 0 auto;
+  }
 }
 </style>

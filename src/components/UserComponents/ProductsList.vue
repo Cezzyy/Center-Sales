@@ -1,175 +1,116 @@
 <script setup>
-import { ref, computed, defineAsyncComponent } from 'vue'
-import { useStorage } from '@vueuse/core'
-import * as XLSX from 'xlsx'
+import { defineAsyncComponent } from 'vue'
+import { useProductsStore } from '@/stores/productStore'
+import { useActivityLog } from '@/composables/useActivityLog'
+import { usePermissions } from '@/composables/usePermissions'
+import { watch } from 'vue'
+
+const activityLog = useActivityLog()
+const { can } = usePermissions()
+
 const AddProductModal = defineAsyncComponent(() => import('../UserSideModals/AddProductModal.vue'))
-const EditProductModal = defineAsyncComponent(() => import('../UserSideModals/EditProductModal.vue'))
+const EditProductModal = defineAsyncComponent(
+  () => import('../UserSideModals/EditProductModal.vue'),
+)
 
-const showAddProductModal = ref(false)
-const isEditProductModal = ref(false)
+const store = useProductsStore()
 
-// Initial sample data
-const initialProducts = [
-  {
-    id: 1,
-    name: 'Wireless Headphones',
-    sku: 'WH-001',
-    category: 'Electronics',
-    quantity: 45,
-    price: 99.99,
-    status: 'In Stock',
-  },
-  {
-    id: 2,
-    name: 'Smart Watch',
-    sku: 'SW-002',
-    category: 'Electronics',
-    quantity: 0,
-    price: 199.99,
-    status: 'Out of Stock',
-  },
-]
-
-const editProduct = ref({
-  id: '',
-    name: '',
-    sku: '',
-    category: '',
-    quantity: 0,
-    price: 0,
-    status: '',
-})
-
-const openEditProductModal = (products) => { 
-  isEditProductModal.value = true
-  editProduct.value = { ...products }
-}
-
-// Reactive state
-const products = useStorage('products', initialProducts)
-const searchQuery = ref('')
-const selectedCategory = ref('')
-const currentPage = ref(1)
-const itemsPerPage = ref(10)
-const sortColumn = ref('name')
-const sortDirection = ref('asc')
-
-// Categories list
-const categories = computed(() => {
-  const uniqueCategories = new Set(products.value.map((product) => product.category))
-  return Array.from(uniqueCategories)
-})
-
-// Computed metrics
-const totalProducts = computed(() => products.value.length)
-const inStockProducts = computed(() => products.value.filter((p) => p.quantity > 0).length)
-const outOfStockProducts = computed(() => products.value.filter((p) => p.quantity === 0).length)
-
-// Filtered and sorted products
-const filteredProducts = computed(() => {
-  let filtered = [...products.value]
-
-  // Apply search filter
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(
-      (product) =>
-        product.name.toLowerCase().includes(query) ||
-        product.sku.toLowerCase().includes(query) ||
-        product.category.toLowerCase().includes(query),
-    )
-  }
-
-  // Apply category filter
-  if (selectedCategory.value) {
-    filtered = filtered.filter((product) => product.category === selectedCategory.value)
-  }
-
-  // Apply sorting
-  filtered.sort((a, b) => {
-    const aValue = a[sortColumn.value]
-    const bValue = b[sortColumn.value]
-
-    if (typeof aValue === 'string') {
-      return sortDirection.value === 'asc'
-        ? aValue.localeCompare(bValue)
-        : bValue.localeCompare(aValue)
-    }
-
-    return sortDirection.value === 'asc' ? aValue - bValue : bValue - aValue
+const openEditProductModal = (product) => {
+  store.showEditProductModal = true
+  store.editProduct = { ...product }
+  activityLog.logAction({
+    action: 'OPEN_EDIT_MODAL',
+    category: 'products',
+    details: `Opened edit modal for product: ${product.name}`,
+    targetId: product.id,
+    additionalData: { productName: product.name },
   })
+}
 
-  return filtered
-})
-
-// Paginated products
-const paginatedProducts = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage.value
-  const end = start + itemsPerPage.value
-  return filteredProducts.value.slice(start, end)
-})
-
-// Total pages
-const totalPages = computed(() => Math.ceil(filteredProducts.value.length / itemsPerPage.value))
-
-// Page numbers array for pagination
-const pageNumbers = computed(() => {
-  const pages = []
-  for (let i = 1; i <= totalPages.value; i++) {
-    if (
-      i === 1 ||
-      i === totalPages.value ||
-      (i >= currentPage.value - 1 && i <= currentPage.value + 1)
-    ) {
-      pages.push(i)
-    } else if (i === currentPage.value - 2 || i === currentPage.value + 2) {
-      pages.push('...')
-    }
+const handleAddProduct = () => {
+  if (!can.write()) {
+    console.error('Permission denied: Cannot add products')
+    return
   }
-  return pages
-})
 
-// Methods
+  // Add product logic here
+  activityLog.logAction({
+    action: 'ADD_PRODUCT',
+    category: 'products',
+    details: 'Added new product to inventory',
+    additionalData: { product: store.newProduct },
+  })
+}
+
+const handleEditProduct = () => {
+  if (!can.write()) {
+    console.error('Permission denied: Cannot edit products')
+    return
+  }
+
+  // Edit product logic here
+  activityLog.logAction({
+    action: 'EDIT_PRODUCT',
+    category: 'products',
+    details: `Updated product details`,
+    targetId: store.editProduct.id,
+    additionalData: {
+      productName: store.editProduct.name,
+      changes: store.editProduct,
+    },
+  })
+}
+
+const handleDeleteProduct = (productId) => {
+  if (!can.delete()) {
+    console.error('Permission denied: Cannot delete products')
+    return
+  }
+
+  store.deleteProduct(productId)
+  activityLog.logAction({
+    action: 'DELETE_PRODUCT',
+    category: 'products',
+    details: 'Deleted product from inventory',
+    targetId: productId,
+  })
+}
+
+watch(
+  () => store.searchQuery,
+  (newQuery) => {
+    activityLog.logAction({
+      action: 'APPLY_SEARCH',
+      category: 'products',
+      details: 'Applied product search filter',
+      additionalData: { searchQuery: newQuery },
+    })
+  },
+)
+
+watch(
+  () => store.selectedCategory,
+  (newCategory) => {
+    activityLog.logAction({
+      action: 'FILTER_CATEGORY',
+      category: 'products',
+      details: 'Changed product category filter',
+      additionalData: { category: newCategory || 'All Categories' },
+    })
+  },
+)
+
 const handleSort = (column) => {
-  if (sortColumn.value === column) {
-    sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc'
-  } else {
-    sortColumn.value = column
-    sortDirection.value = 'asc'
-  }
-}
-
-const handlePageChange = (page) => {
-  if (page >= 1 && page <= totalPages.value) {
-    currentPage.value = page
-  }
-}
-
-const deleteProduct = (productId) => {
-  if (confirm('Are you sure you want to delete this product?')) {
-    products.value = products.value.filter((p) => p.id !== productId)
-  }
-}
-
-const exportToExcel = () => {
-  const data = filteredProducts.value.map((product) => ({
-    'Product Name': product.name,
-    SKU: product.sku,
-    Category: product.category,
-    'Stock Quantity': product.quantity,
-    Price: product.price,
-    Status: product.status,
-  }))
-
-  const worksheet = XLSX.utils.json_to_sheet(data)
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Products')
-
-  // Generate file name with current date
-  const date = new Date().toISOString().split('T')[0]
-  const fileName = `products-${date}.xlsx`
-
-  XLSX.writeFile(workbook, fileName)
+  store.handleSort(column)
+  activityLog.logAction({
+    action: 'SORT_PRODUCTS',
+    category: 'products',
+    details: `Sorted products list`,
+    additionalData: {
+      column,
+      direction: store.sortDirection,
+    },
+  })
 }
 </script>
 
@@ -179,47 +120,57 @@ const exportToExcel = () => {
     <section class="filters-section">
       <div class="search-bar">
         <input
-          v-model="searchQuery"
           type="text"
+          v-model="store.searchQuery"
           placeholder="Search by name, SKU, or category..."
           class="search-input"
         />
       </div>
       <div class="category-filter">
-        <select v-model="selectedCategory" class="category-select">
+        <select v-model="store.selectedCategory" class="category-select">
           <option value="">All Categories</option>
-          <option v-for="category in categories" :key="category" :value="category">
+          <option v-for="category in store.categories" :key="category" :value="category">
             {{ category }}
           </option>
         </select>
       </div>
+      <button
+        v-if="can.write()"
+        @click="store.showAddProductModal = true"
+        class="action-button add-button"
+      >
+        Add Product
+      </button>
     </section>
 
     <!-- Key Metrics Section -->
     <section class="metrics-section">
       <div class="metric-card">
         <h3>Total Products</h3>
-        <p class="metric-value">{{ totalProducts }}</p>
+        <p class="metric-value">{{ store.totalProducts }}</p>
       </div>
       <div class="metric-card">
         <h3>In-Stock Products</h3>
-        <p class="metric-value">{{ inStockProducts }}</p>
+        <p class="metric-value">{{ store.inStockProducts }}</p>
       </div>
       <div class="metric-card">
         <h3>Out-of-Stock Products</h3>
-        <p class="metric-value">{{ outOfStockProducts }}</p>
+        <p class="metric-value">{{ store.outOfStockProducts }}</p>
       </div>
     </section>
 
     <!-- Actions Section -->
     <section class="actions-section">
-      <button @click="showAddProductModal = true" class="action-button add-button">
-        Add Product
+      <button
+        v-if="can.exportData()"
+        @click="store.exportToExcel"
+        class="action-button export-button"
+      >
+        Export to Excel
       </button>
-      <button @click="exportToExcel" class="action-button export-button">Export to Excel</button>
     </section>
 
-    <AddProductModal v-model="showAddProductModal" @submit="handleAddProduct" />
+    <AddProductModal v-model="store.showAddProductModal" @submit="handleAddProduct" />
 
     <!-- Products Table -->
     <section class="table-section">
@@ -233,58 +184,70 @@ const exportToExcel = () => {
               class="sortable"
             >
               {{ column.charAt(0).toUpperCase() + column.slice(1) }}
-              {{ sortColumn === column ? (sortDirection === 'asc' ? '↑' : '↓') : '' }}
+              {{ store.sortColumn === column ? (store.sortDirection === 'asc' ? '↑' : '↓') : '' }}
             </th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="product in paginatedProducts" :key="product.id">
+          <tr v-for="product in store.paginatedProducts" :key="product.id">
             <td>{{ product.name }}</td>
             <td>{{ product.sku }}</td>
             <td>{{ product.category }}</td>
             <td>{{ product.quantity }}</td>
-            <td>${{ product.price.toFixed(2) }}</td>
+            <td>₱{{ product.price.toFixed(2) }}</td>
             <td>
               <span :class="['status', product.quantity > 0 ? 'in-stock' : 'out-of-stock']">
                 {{ product.quantity > 0 ? 'In Stock' : 'Out of Stock' }}
               </span>
             </td>
             <td class="actions">
-              <button @click="openEditProductModal(product)" class="icon-button edit">Edit</button>
-              <button @click="deleteProduct(product.id)" class="icon-button delete">Delete</button>
+              <button
+                v-if="can.write()"
+                @click="openEditProductModal(product)"
+                class="icon-button edit"
+              >
+                Edit
+              </button>
+              <button
+                v-if="can.delete()"
+                @click="handleDeleteProduct(product.id)"
+                class="icon-button delete"
+              >
+                Delete
+              </button>
             </td>
           </tr>
         </tbody>
       </table>
       <EditProductModal
-      v-model="isEditProductModal"
-      :product="editProduct"
-      @submit="handleEditProduct"
+        v-model="store.showEditProductModal"
+        :product="store.editProduct"
+        @submit="handleEditProduct"
       />
       <!-- Pagination -->
       <div class="pagination-section">
         <button
-          @click="handlePageChange(currentPage - 1)"
-          :disabled="currentPage === 1"
+          @click="store.handlePageChange(store.currentPage - 1)"
+          :disabled="store.currentPage === 1"
           class="pagination-button"
         >
           Previous
         </button>
         <div class="page-numbers">
           <button
-            v-for="(page, index) in pageNumbers"
+            v-for="(page, index) in store.pageNumbers"
             :key="index"
-            @click="typeof page === 'number' && handlePageChange(page)"
-            :class="['page-number', { active: page === currentPage }]"
+            @click="typeof page === 'number' && store.handlePageChange(page)"
+            :class="['page-number', { active: page === store.currentPage }]"
             :disabled="typeof page !== 'number'"
           >
             {{ page }}
           </button>
         </div>
         <button
-          @click="handlePageChange(currentPage + 1)"
-          :disabled="currentPage === totalPages"
+          @click="store.handlePageChange(store.currentPage + 1)"
+          :disabled="store.currentPage === store.totalPages"
           class="pagination-button"
         >
           Next

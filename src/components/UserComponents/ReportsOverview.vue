@@ -1,244 +1,50 @@
 <script setup>
 import { ref, computed, watch, defineAsyncComponent } from 'vue'
+import { useReportsStore } from '@/stores/reportsStore'
+import { useOrderInvoiceStore } from '@/stores/salesStore'
 import { saveAs } from 'file-saver'
 import * as XLSX from 'xlsx'
-const AddReportModal =  defineAsyncComponent(() => import('../UserSideModals/AddReportModal.vue'))
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+import { library } from '@fortawesome/fontawesome-svg-core'
+import { faChartLine, faPlus, faEdit } from '@fortawesome/free-solid-svg-icons'
 
-// Sample data structure (replace with actual API calls in production)
-const salesData = ref([
-  {
-    id: 'TRX-001',
-    date: '2024-02-20',
-    clientName: 'John Doe',
-    productName: 'Product XYZ',
-    quantity: 5,
-    price: 99.99,
-    salesRep: 'Jane Smith',
-    category: 'Electronics',
-  },
-  {
-    id: 'TRX-002',
-    date: '2024-03-15',
-    clientName: 'Alice Johnson',
-    productName: 'Wireless Mouse',
-    quantity: 10,
-    price: 19.99,
-    salesRep: 'Mark Lee',
-    category: 'Accessories',
-  },
-  {
-    id: 'TRX-003',
-    date: '2024-03-20',
-    clientName: 'Bob Brown',
-    productName: 'Laptop ABC',
-    quantity: 2,
-    price: 799.99,
-    salesRep: 'Jane Smith',
-    category: 'Electronics',
-  },
-  {
-    id: 'TRX-004',
-    date: '2024-04-10',
-    clientName: 'Charlie Green',
-    productName: 'Bluetooth Speaker',
-    quantity: 7,
-    price: 49.99,
-    salesRep: 'Mark Lee',
-    category: 'Accessories',
-  },
-  {
-    id: 'TRX-005',
-    date: '2024-05-05',
-    clientName: 'Diana White',
-    productName: 'Smartphone 123',
-    quantity: 3,
-    price: 599.99,
-    salesRep: 'Emily Davis',
-    category: 'Electronics',
-  },
-  {
-    id: 'TRX-006',
-    date: '2024-05-15',
-    clientName: 'Evan King',
-    productName: 'Tablet Pro',
-    quantity: 4,
-    price: 399.99,
-    salesRep: 'Jane Smith',
-    category: 'Electronics',
-  },
-  {
-    id: 'TRX-007',
-    date: '2024-06-01',
-    clientName: 'Fiona Hill',
-    productName: 'Gaming Keyboard',
-    quantity: 6,
-    price: 89.99,
-    salesRep: 'Mark Lee',
-    category: 'Accessories',
-  },
-  {
-    id: 'TRX-008',
-    date: '2024-06-20',
-    clientName: 'George Miller',
-    productName: 'Smartwatch',
-    quantity: 2,
-    price: 199.99,
-    salesRep: 'Emily Davis',
-    category: 'Wearables',
-  },
-  {
-    id: 'TRX-009',
-    date: '2024-07-10',
-    clientName: 'Hannah Scott',
-    productName: 'Headphones',
-    quantity: 8,
-    price: 59.99,
-    salesRep: 'Jane Smith',
-    category: 'Accessories',
-  },
-  {
-    id: 'TRX-010',
-    date: '2024-07-15',
-    clientName: 'Ian Baker',
-    productName: 'Desktop Monitor',
-    quantity: 1,
-    price: 299.99,
-    salesRep: 'Mark Lee',
-    category: 'Electronics',
-  },
-  {
-    id: 'TRX-011',
-    date: '2024-08-01',
-    clientName: 'Jessica Adams',
-    productName: 'Wireless Charger',
-    quantity: 5,
-    price: 29.99,
-    salesRep: 'Emily Davis',
-    category: 'Accessories',
-  },
-  {
-    id: 'TRX-012',
-    date: '2024-08-20',
-    clientName: 'Kevin Turner',
-    productName: 'USB-C Hub',
-    quantity: 3,
-    price: 24.99,
-    salesRep: 'Jane Smith',
-    category: 'Accessories',
-  },
-])
+library.add(faChartLine, faPlus, faEdit)
 
-// Filters
+import { useActivityLog } from '@/composables/useActivityLog'
+import { usePermissions } from '@/composables/usePermissions'
+
+// Get stores, activity logger, and permissions
+const reportsStore = useReportsStore()
+const orderStore = useOrderInvoiceStore()
+const activityLog = useActivityLog()
+const { logAction } = activityLog
+const { can } = usePermissions()
+
+const AddReportModal = defineAsyncComponent(() => import('../UserSideModals/AddReportModal.vue'))
+const EditReportModal = defineAsyncComponent(() => import('../UserSideModals/EditReportModal.vue'))
+
+// Reactive references for filters and pagination
 const startDate = ref('')
 const endDate = ref('')
-const selectedSalesRep = ref('')
-const selectedCategory = ref('')
 const searchQuery = ref('')
 const currentPage = ref(1)
 const itemsPerPage = ref(10)
 const sortBy = ref('date')
 const sortDirection = ref('desc')
+const showAddReportModal = ref(false)
+const showEditReportModal = ref(false)
+const selectedReport = ref(null)
 
-const isAddReportModal = ref(false)
-
-const showAddReportModal = () => {
-  isAddReportModal.value = true;
-}
-
-// Computed Properties for Unique Values
-const salesReps = computed(() => {
-  return [...new Set(salesData.value.map((item) => item.salesRep))]
-})
-
-const categories = computed(() => {
-  return [...new Set(salesData.value.map((item) => item.category))]
-})
-
-// Filtered Data
-const filteredData = computed(() => {
-  let filtered = [...salesData.value]
-
-  // Date range filter
-  if (startDate.value && endDate.value) {
-    filtered = filtered.filter((item) => {
-      const itemDate = new Date(item.date)
-      return itemDate >= new Date(startDate.value) && itemDate <= new Date(endDate.value)
-    })
-  }
-
-  // Sales rep filter
-  if (selectedSalesRep.value) {
-    filtered = filtered.filter((item) => item.salesRep === selectedSalesRep.value)
-  }
-
-  // Category filter
-  if (selectedCategory.value) {
-    filtered = filtered.filter((item) => item.category === selectedCategory.value)
-  }
-
-  // Search query
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(
-      (item) =>
-        item.id.toLowerCase().includes(query) || item.clientName.toLowerCase().includes(query),
-    )
-  }
-
-  // Sorting
-  filtered.sort((a, b) => {
-    let comparison = 0
-    if (a[sortBy.value] < b[sortBy.value]) comparison = -1
-    if (a[sortBy.value] > b[sortBy.value]) comparison = 1
-    return sortDirection.value === 'desc' ? -comparison : comparison
-  })
-
-  return filtered
-})
-
-// Pagination
-const totalPages = computed(() => Math.ceil(filteredData.value.length / itemsPerPage.value))
-
-const paginatedData = computed(() => {
+// Computed Properties
+const reports = computed(() => reportsStore.filteredReports)
+const paginatedReports = computed(() => {
   const start = (currentPage.value - 1) * itemsPerPage.value
-  const end = start + itemsPerPage.value
-  return filteredData.value.slice(start, end)
+  return reports.value.slice(start, start + itemsPerPage.value)
 })
 
-const pageNumbers = computed(() => {
-  const pages = []
-  for (let i = 1; i <= totalPages.value; i++) {
-    if (
-      i === 1 ||
-      i === totalPages.value ||
-      (i >= currentPage.value - 1 && i <= currentPage.value + 1)
-    ) {
-      pages.push(i)
-    } else if (i === currentPage.value - 2 || i === currentPage.value + 2) {
-      pages.push('...')
-    }
-  }
-  return pages
-})
-
-// Key Metrics
-const totalSales = computed(() => {
-  return filteredData.value.reduce((sum, item) => sum + item.quantity * item.price, 0)
-})
-
-const totalTransactions = computed(() => filteredData.value.length)
-
-const topSellingProduct = computed(() => {
-  const productSales = {}
-  filteredData.value.forEach((item) => {
-    productSales[item.productName] = (productSales[item.productName] || 0) + item.quantity
-  })
-  const topProduct = Object.entries(productSales).sort(([, a], [, b]) => b - a)[0]
-  return {
-    name: topProduct[0],
-    quantity: topProduct[1],
-  }
-})
+const totalPages = computed(() => Math.ceil(reports.value.length / itemsPerPage.value))
+const totalRevenue = computed(() => reportsStore.totalRevenue)
+const averageOrderValue = computed(() => reportsStore.averageOrderValue)
 
 // Methods
 const handleSort = (column) => {
@@ -248,201 +54,302 @@ const handleSort = (column) => {
     sortBy.value = column
     sortDirection.value = 'asc'
   }
+  reportsStore.handleSort(column)
+  // logAction({
+  //   action: 'SORT_REPORTS',
+  //   category: 'reports',
+  //   details: `Reports sorted by ${column} in ${sortDirection.value} order`,
+  //   additionalData: { column, direction: sortDirection.value },
+  // })
 }
 
 const changePage = (page) => {
   if (page >= 1 && page <= totalPages.value) {
     currentPage.value = page
   }
+  // logAction({
+  //   action: 'CHANGE_PAGE',
+  //   category: 'reports',
+  //   details: `Navigated to reports page ${page}`,
+  //   additionalData: { page, totalPages: totalPages.value },
+  // })
 }
 
-const exportToExcel = () => {
-  const ws = XLSX.utils.json_to_sheet(filteredData.value)
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, 'Sales Report')
-  const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
-  const data = new Blob([excelBuffer], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  })
-  saveAs(data, 'sales-report.xlsx')
+const exportToExcel = async () => {
+  if (!can.exportData()) {
+    console.error('Permission denied: Cannot export data')
+    return
+  }
+
+  try {
+    const ws = XLSX.utils.json_to_sheet(reports.value)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Reports')
+    const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+    const data = new Blob([excelBuffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    })
+    saveAs(data, 'reports.xlsx')
+
+    logAction({
+      action: 'EXPORT_REPORTS',
+      category: 'reports',
+      details: 'Exported reports to Excel format',
+      additionalData: {
+        format: 'xlsx',
+        count: reports.value.length,
+        dateRange: { start: startDate.value, end: endDate.value },
+      },
+    })
+  } catch (error) {
+    console.error('Failed to export to Excel:', error)
+  }
 }
 
-const exportToCSV = () => {
-  const ws = XLSX.utils.json_to_sheet(filteredData.value)
-  const csv = XLSX.utils.sheet_to_csv(ws)
-  const data = new Blob([csv], { type: 'text/csv;charset=utf-8' })
-  saveAs(data, 'sales-report.csv')
+const exportToCSV = async () => {
+  if (!can.exportData()) {
+    console.error('Permission denied: Cannot export data')
+    return
+  }
+
+  try {
+    const csvContent = reports.value.map((report) => Object.values(report).join(',')).join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' })
+    saveAs(blob, 'reports.csv')
+
+    logAction({
+      action: 'EXPORT_REPORTS',
+      category: 'reports',
+      details: 'Exported reports to CSV format',
+      additionalData: {
+        format: 'csv',
+        count: reports.value.length,
+        dateRange: { start: startDate.value, end: endDate.value },
+      },
+    })
+  } catch (error) {
+    console.error('Failed to export to CSV:', error)
+  }
+}
+
+const addReport = async (reportData) => {
+  if (!can.write()) {
+    console.error('Permission denied: Cannot create reports')
+    return
+  }
+
+  try {
+    const newReport = await reportsStore.addReport(reportData)
+    showAddReportModal.value = false
+    await logAction({
+      action: 'CREATE_REPORT',
+      category: 'report',
+      details: `Created new report #${reportData.reportId} for order #${reportData.orderId} - Customer: ${reportData.customerName}`,
+      targetId: reportData.reportId,
+    })
+  } catch (error) {
+    console.error('Failed to create report:', error)
+  }
+}
+
+const editReport = (report) => {
+  selectedReport.value = { ...report }
+  showEditReportModal.value = true
+}
+
+const handleUpdateReport = async (updatedReport) => {
+  if (!can.write()) {
+    console.error('Permission denied: Cannot edit reports')
+    return
+  }
+
+  try {
+    await reportsStore.updateReport(updatedReport)
+    showEditReportModal.value = false
+    selectedReport.value = null
+    await logAction({
+      action: 'UPDATE_REPORT',
+      category: 'report',
+      details: `Updated report #${updatedReport.reportId}`,
+      targetId: updatedReport.reportId,
+    })
+  } catch (error) {
+    console.error('Failed to update report:', error)
+  }
 }
 
 // Watch for filter changes to reset pagination
-watch([startDate, endDate, selectedSalesRep, selectedCategory, searchQuery], () => {
+watch([startDate, endDate, searchQuery], () => {
   currentPage.value = 1
+  reportsStore.setDateFilter(startDate.value, endDate.value)
+  reportsStore.setSearchQuery(searchQuery.value)
+  // logAction({
+  //   action: 'APPLY_FILTERS',
+  //   category: 'reports',
+  //   details: 'Applied report filters',
+  //   additionalData: {
+  //     dateRange: { start: startDate.value, end: endDate.value },
+  //     searchQuery: searchQuery.value,
+  //   },
+  // })
 })
 </script>
 
 <template>
-  <div class="sales-overview">
+  <div class="reports-overview">
     <!-- Filters Section -->
     <section class="filters-section">
       <div class="date-filters">
         <div class="filter-group">
-          <label for="start-date">Start Date:</label>
-          <input type="date" id="start-date" class="date-input" v-model="startDate" />
+          <label>From:</label>
+          <input type="date" v-model="startDate" />
         </div>
         <div class="filter-group">
-          <label for="end-date">End Date:</label>
-          <input type="date" id="end-date" class="date-input" v-model="endDate" />
+          <label>To:</label>
+          <input type="date" v-model="endDate" />
         </div>
       </div>
 
-      <div class="additional-filters">
-        <div class="filter-group">
-          <label for="sales-rep">Sales Representative:</label>
-          <select id="sales-rep" class="filter-select" v-model="selectedSalesRep">
-            <option value="">All Representatives</option>
-            <option v-for="rep in salesReps" :key="rep" :value="rep">
-              {{ rep }}
-            </option>
-          </select>
+      <div class="search-export">
+        <div class="search-box">
+          <input type="text" v-model="searchQuery" placeholder="Search reports..." />
         </div>
-        <div class="filter-group">
-          <label for="category">Product Category:</label>
-          <select id="category" class="filter-select" v-model="selectedCategory">
-            <option value="">All Categories</option>
-            <option v-for="category in categories" :key="category" :value="category">
-              {{ category }}
-            </option>
-          </select>
-        </div>
-        <div class="filter-group">
-          <label for="search">Search:</label>
-          <input
-            type="text"
-            id="search"
-            class="search-input"
-            v-model="searchQuery"
-            placeholder="Search by Transaction ID or Client Name"
-          />
+
+        <div class="export-buttons">
+          <button v-if="can.exportData()" @click="exportToExcel" class="btn-export">
+            Export to Excel
+          </button>
+          <button v-if="can.exportData()" @click="exportToCSV" class="btn-export">
+            Export to CSV
+          </button>
+          <button v-if="can.write()" @click="showAddReportModal = true" class="btn-add">
+            Add Report
+          </button>
         </div>
       </div>
     </section>
 
-    <!-- Key Metrics Section -->
+    <!-- Metrics Section -->
     <section class="metrics-section">
       <div class="metric-card">
-        <h3>Total Sales</h3>
-        <p class="metric-value">
-          ${{ totalSales.toLocaleString('en-US', { minimumFractionDigits: 2 }) }}
-        </p>
-      </div>
-      <div class="metric-card">
-        <h3>Number of Transactions</h3>
-        <p class="metric-value">{{ totalTransactions.toLocaleString() }}</p>
-      </div>
-      <div class="metric-card">
-        <h3>Top-Selling Product</h3>
-        <p class="metric-value">{{ topSellingProduct.name }}</p>
-        <p class="metric-subtext">Qty: {{ topSellingProduct.quantity }} units</p>
+        <h3>Total Reports</h3>
+        <p>{{ reports.length }}</p>
       </div>
       <div class="metric-card">
         <h3>Total Revenue</h3>
-        <p class="metric-value">
-          ${{ totalSales.toLocaleString('en-US', { minimumFractionDigits: 2 }) }}
-        </p>
+        <p>₱{{ totalRevenue.toLocaleString() }}</p>
+      </div>
+      <div class="metric-card">
+        <h3>Average Order Value</h3>
+        <p>₱{{ averageOrderValue.toLocaleString() }}</p>
       </div>
     </section>
 
-    <!-- Export and Print Buttons -->
-    <section class="action-buttons">
-      <button class="action-btn add-btn" @click="showAddReportModal">Add Report</button>
-      <button class="action-btn export-btn" @click="exportToExcel">Export to Excel</button>
-      <button class="action-btn export-btn" @click="exportToCSV">Export to CSV</button>
-    </section>
-    <AddReportModal
-    v-model="isAddReportModal"
-    />
-
-
-    <!-- Sales Report Table -->
+    <!-- Table Section -->
     <section class="table-section">
-      <table class="sales-table">
+      <table class="reports-table" v-if="reports.length > 0">
         <thead>
           <tr>
-            <th
-              v-for="column in [
-                'date',
-                'id',
-                'clientName',
-                'productName',
-                'quantity',
-                'price',
-                'total',
-                'salesRep',
-              ]"
-              :key="column"
-              class="sortable"
-              @click="handleSort(column)"
-            >
-              {{ column.charAt(0).toUpperCase() + column.slice(1) }}
-              {{ sortBy === column ? (sortDirection === 'asc' ? '↑' : '↓') : '' }}
-            </th>
+            <th @click="handleSort('reportId')">Report ID</th>
+            <th @click="handleSort('orderId')">Order ID</th>
+            <th @click="handleSort('customerName')">Customer Name</th>
+            <th @click="handleSort('productName')">Product</th>
+            <th @click="handleSort('quantity')">Quantity</th>
+            <th @click="handleSort('amount')">Amount</th>
+            <th @click="handleSort('salesRep')">Sales Rep</th>
+            <th @click="handleSort('orderDate')">Order Date</th>
+            <th @click="handleSort('dueDate')">Due Date</th>
+            <th @click="handleSort('status')">Status</th>
+            <th @click="handleSort('paymentStatus')">Payment Status</th>
+            <th v-if="can.write()">Actions</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="item in paginatedData" :key="item.id">
-            <td>{{ new Date(item.date).toLocaleDateString() }}</td>
-            <td>{{ item.id }}</td>
-            <td>{{ item.clientName }}</td>
-            <td>{{ item.productName }}</td>
-            <td>{{ item.quantity }}</td>
-            <td>${{ item.price.toFixed(2) }}</td>
-            <td>${{ (item.quantity * item.price).toFixed(2) }}</td>
-            <td>{{ item.salesRep }}</td>
+          <tr v-for="report in paginatedReports" :key="report.reportId">
+            <td>{{ report.reportId }}</td>
+            <td>{{ report.orderId }}</td>
+            <td>{{ report.customerName }}</td>
+            <td>{{ report.productName }}</td>
+            <td>{{ report.quantity }}</td>
+            <td>₱{{ report.amount.toLocaleString() }}</td>
+            <td>{{ report.salesRep }}</td>
+            <td>{{ report.orderDate }}</td>
+            <td>{{ report.dueDate }}</td>
+            <td>{{ report.status }}</td>
+            <td>{{ report.paymentStatus }}</td>
+            <td v-if="can.write()">
+              <button class="btn-edit" @click="editReport(report)">
+                <font-awesome-icon icon="fa-solid fa-edit" class="edit-icon" />
+                Edit
+              </button>
+            </td>
           </tr>
         </tbody>
       </table>
 
+      <!-- Empty State -->
+      <div v-else class="empty-state">
+        <div class="empty-state__content">
+          <div class="empty-state__icon-wrapper">
+            <font-awesome-icon :icon="faChartLine" class="empty-state__icon" />
+          </div>
+          <h3 class="empty-state__title">No Reports Found</h3>
+          <p class="empty-state__message">
+            There are no reports matching your current filters. Try adjusting your search criteria
+            or add a new report.
+          </p>
+          <button
+            v-if="can.write()"
+            @click="showAddReportModal = true"
+            class="btn-add empty-state__button"
+          >
+            <font-awesome-icon :icon="faPlus" />
+            Add New Report
+          </button>
+        </div>
+      </div>
+
       <!-- Pagination -->
-      <div class="pagination">
-        <button class="page-btn" @click="changePage(currentPage - 1)" :disabled="currentPage === 1">
+      <div class="pagination" v-if="reports.length > 0">
+        <button :disabled="currentPage === 1" @click="changePage(currentPage - 1)" class="btn-page">
           Previous
         </button>
+        <span>Page {{ currentPage }} of {{ totalPages }}</span>
         <button
-          v-for="page in pageNumbers"
-          :key="page"
-          class="page-btn"
-          :class="{ active: page === currentPage }"
-          @click="typeof page === 'number' && changePage(page)"
-          :disabled="typeof page !== 'number'"
-        >
-          {{ page }}
-        </button>
-        <button
-          class="page-btn"
-          @click="changePage(currentPage + 1)"
           :disabled="currentPage === totalPages"
+          @click="changePage(currentPage + 1)"
+          class="btn-page"
         >
           Next
         </button>
       </div>
     </section>
+
+    <!-- Add Report Modal -->
+    <AddReportModal v-model="showAddReportModal" :orders="orderStore.orders" @submit="addReport" />
+
+    <!-- Edit Report Modal -->
+    <EditReportModal
+      v-if="showEditReportModal"
+      :isOpen="showEditReportModal"
+      :report="selectedReport"
+      @close="showEditReportModal = false"
+      @update="handleUpdateReport"
+    />
   </div>
 </template>
 
 <style scoped>
-.sales-overview {
+.reports-overview {
   padding: 2rem;
   background-color: #f8f9fa;
-  min-height: 100vh;
 }
-
-/* Filters Section */
 .filters-section {
-  background-color: white;
+  margin-bottom: 2rem;
+  background: white;
   padding: 1.5rem;
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  margin-bottom: 2rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .date-filters {
@@ -451,207 +358,326 @@ watch([startDate, endDate, selectedSalesRep, selectedCategory, searchQuery], () 
   margin-bottom: 1rem;
 }
 
-.additional-filters {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1rem;
-}
-
 .filter-group {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 0.5rem;
+  width: 50%;
 }
 
 .filter-group label {
-  font-weight: 600;
-  color: #333;
+  color: #6c757d;
+  font-weight: 500;
 }
 
-.date-input,
-.filter-select,
-.search-input {
+.filter-group input {
+  width: 100%;
   padding: 0.5rem;
   border: 1px solid #ddd;
   border-radius: 4px;
-  font-size: 1rem;
+  box-sizing: border-box;
 }
 
-/* Metrics Section */
+.search-export {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.search-box input {
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  width: 300px;
+}
+
+.export-buttons {
+  display: flex;
+  gap: 1rem;
+}
+
+.btn-export,
+.btn-add {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 4px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-export {
+  background: linear-gradient(135deg, #4f46e5, #4338ca);
+  color: white;
+}
+
+.btn-export:hover {
+  opacity: 0.9;
+}
+
+.btn-add {
+  background: linear-gradient(to right, #4f46e5, #4338ca);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 0.375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-add:hover {
+  background: linear-gradient(to right, #4338ca, #3730a3);
+  transform: translateY(-1px);
+}
+
+.btn-add:active {
+  transform: translateY(0);
+}
+
 .metrics-section {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 1.5rem;
   margin-bottom: 2rem;
 }
 
 .metric-card {
-  background-color: white;
+  background: white;
   padding: 1.5rem;
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   text-align: center;
 }
 
 .metric-card h3 {
-  color: #666;
-  font-size: 0.9rem;
+  color: #6c757d;
   margin-bottom: 0.5rem;
+  font-size: 1rem;
 }
 
-.metric-value {
+.metric-card p {
   font-size: 1.5rem;
-  font-weight: 700;
-  color: #2c3e50;
+  font-weight: bold;
+  color: #212529;
   margin: 0;
 }
 
-.metric-subtext {
-  font-size: 0.8rem;
-  color: #666;
-  margin-top: 0.25rem;
-}
-
-/* Action Buttons */
-.action-buttons {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 2rem;
-  flex-wrap: wrap;
-}
-
-.action-btn {
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: 600;
-  transition: background-color 0.3s;
-}
-
-.export-btn {
-  background: linear-gradient(135deg, #4f46e5, #4338ca);
-  color: white;
-}
-
-.add-btn {
-  background: linear-gradient(135deg, #064e3b, #6ee7b7);
-  color: white;
-}
-
-.action-btn:hover {
-  opacity: 0.9;
-}
-
-/* Table Section */
 .table-section {
-  background-color: white;
+  background: white;
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   overflow-x: auto;
 }
 
-.sales-table {
+.reports-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 1000px;
 }
 
-.sales-table th,
-.sales-table td {
+.reports-table th,
+.reports-table td {
   padding: 1rem;
   text-align: left;
-  border-bottom: 1px solid #ddd;
+  border-bottom: 1px solid #dee2e6;
 }
 
-.sales-table th {
+.reports-table th {
   background-color: #f8f9fa;
   font-weight: 600;
-}
-
-.sortable {
   cursor: pointer;
+  transition: background-color 0.2s;
 }
 
-.sortable:hover {
-  background-color: #eee;
+.reports-table th:hover {
+  background-color: #e9ecef;
 }
 
-.sales-table tbody tr:hover {
-  background-color: #f5f5f5;
+.reports-table tbody tr:hover {
+  background-color: #f8f9fa;
 }
 
-/* Pagination */
 .pagination {
   display: flex;
   justify-content: center;
   align-items: center;
+  gap: 1rem;
   padding: 1rem;
-  gap: 0.5rem;
 }
 
-.page-btn {
+.btn-page {
   padding: 0.5rem 1rem;
-  border: 1px solid #ddd;
+  border: 1px solid #dee2e6;
   background-color: white;
   border-radius: 4px;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.2s;
 }
 
-.page-btn.active {
-  background: linear-gradient(135deg, #4f46e5, #4338ca);
-  color: white;
+.btn-page:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-.page-btn:hover:not(.active) {
+.btn-page:not(:disabled):hover {
   background-color: #f5f5f5;
 }
 
-.page-ellipsis {
-  padding: 0.5rem;
-  color: #666;
+/* Status styles */
+.status-pending {
+  background-color: #fff3cd;
+  color: #856404;
+  padding: 0.2rem 0.5rem;
+  border-radius: 8px;
 }
 
-/* Additional print styles */
-@media print {
-  .filters-section,
-  .action-buttons,
-  .pagination {
-    display: none;
-  }
+.status-completed {
+  background-color: #d4edda;
+  color: #155724;
+  padding: 0.2rem 0.5rem;
+  border-radius: 8px;
+}
 
-  .sales-overview {
-    padding: 0;
-  }
+.status-unpaid {
+  background-color: #f8d7da;
+  color: #721c24;
+  padding: 0.2rem 0.5rem;
+  border-radius: 8px;
+}
 
-  .table-section {
-    box-shadow: none;
-  }
-
-  .sales-table th,
-  .sales-table td {
-    padding: 0.5rem;
-    font-size: 12px;
-  }
+.status-paid {
+  background-color: #d4edda;
+  color: #155724;
+  padding: 0.2rem 0.5rem;
+  border-radius: 8px;
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .sales-overview {
+  .reports-overview {
     padding: 1rem;
+  }
+
+  .filter-group {
+    width: 100%;
   }
 
   .date-filters {
     flex-direction: column;
   }
 
-  .action-buttons {
-    justify-content: stretch;
+  .search-export {
+    flex-direction: column;
+    gap: 1rem;
   }
 
-  .action-btn {
-    flex: 1;
+  .search-box input {
+    width: 100%;
   }
+
+  .export-buttons {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .btn-export,
+  .btn-add {
+    width: 100%;
+  }
+
+  .reports-table {
+    font-size: 0.875rem;
+  }
+
+  .reports-table th,
+  .reports-table td {
+    padding: 0.75rem;
+  }
+}
+
+.empty-state {
+  background: white;
+  border-radius: 8px;
+  padding: 4rem 2rem;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin: 2rem 0;
+  min-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-state__content {
+  max-width: 400px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.empty-state__icon-wrapper {
+  background: rgba(79, 70, 229, 0.1);
+  border-radius: 50%;
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.empty-state__icon {
+  font-size: 2.5rem;
+  color: #4f46e5;
+}
+
+.empty-state__title {
+  color: #2c3e50;
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.empty-state__message {
+  color: #6c757d;
+  line-height: 1.6;
+  margin: 0 0 1.5rem;
+  font-size: 1rem;
+}
+
+.empty-state__button {
+  min-width: 200px;
+  justify-content: center;
+}
+
+.empty-state__button svg {
+  margin-right: 0.5rem;
+}
+
+.btn-edit {
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background-color 0.2s;
+}
+
+.btn-edit:hover {
+  background-color: #2563eb;
+}
+
+.edit-icon {
+  font-size: 0.875rem;
 }
 </style>

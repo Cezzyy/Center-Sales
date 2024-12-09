@@ -78,6 +78,7 @@ export const useClientStore = defineStore('clientStore', {
       };
       this.clients.push(newClient);
       this.closeModal();
+      return { ...newClient }; // Make sure we return the new client with its ID
     },
     
     editClient(client) {

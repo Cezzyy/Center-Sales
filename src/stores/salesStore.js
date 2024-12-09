@@ -74,6 +74,8 @@ export const useOrderInvoiceStore = defineStore('orderInvoice', {
         amount: 1500,
         dueDate: '2024-02-01',
         daysOverdue: 15,
+        isPaid: false,
+        paidDate: null
       },
       {
         invoiceId: 'INV-002',
@@ -81,6 +83,8 @@ export const useOrderInvoiceStore = defineStore('orderInvoice', {
         amount: 1200,
         dueDate: '2024-02-10',
         daysOverdue: 0,
+        isPaid: false,
+        paidDate: null
       },
     ],
 
@@ -193,36 +197,68 @@ export const useOrderInvoiceStore = defineStore('orderInvoice', {
     totalInvoicePages(state) {
       return Math.ceil(this.filteredInvoices.length / state.itemsPerPage);
     },
+    getInvoiceById: (state) => (id) => {
+      return state.invoices.find(invoice => invoice.invoiceId === id);
+    },
   },
 
   // Actions
   actions: {
     // Modal Handlers
     openModal(modalName) {
-      this[modalName] = true;
+      this[`is${modalName}ModalOpen`] = true;
     },
     closeModal(modalName) {
-      this[modalName] = false;
+      this[`is${modalName}ModalOpen`] = false;
     },
 
     // Handle submission from modals
     handleEditOrderSubmit(updatedOrder) {
       const index = this.orders.findIndex(order => order.orderId === updatedOrder.orderId);
       if (index !== -1) {
-        this.orders[index] = { ...updatedOrder };
+        this.orders[index] = { ...this.orders[index], ...updatedOrder };
+        this.closeModal('EditOrder');
+        return this.orders[index];
       }
-      this.closeModal('isEditOrderModalOpen');
+      return null;
     },
-    handleAddInvoiceSubmit(updatedInvoice) {
-      const index = this.invoices.findIndex(inv => inv.invoiceId === updatedInvoice.invoiceId);
+
+    handleEditInvoiceSubmit(updatedInvoice) {
+      const index = this.invoices.findIndex(invoice => invoice.invoiceId === updatedInvoice.invoiceId);
       if (index !== -1) {
-        this.invoices[index] = { ...updatedInvoice };
+        this.invoices[index] = { ...this.invoices[index], ...updatedInvoice };
+        this.closeModal('EditInvoice');
+        return this.invoices[index];
       }
-      this.closeModal('isEditInvoiceModalOpen');
+      return null;
     },
+
+    handleAddInvoiceSubmit(updatedInvoice) {
+      this.invoices.push(updatedInvoice);
+      this.closeModal('AddInvoice');
+    },
+
     handleAddSalesSubmit(salesData) {
-      console.log('Sales Data Submitted:', salesData);
-      this.closeModal('isAddSalesModalOpen');
+      this.orders.push(salesData);
+      this.closeModal('AddSales');
+    },
+
+    markInvoiceAsPaid(invoiceId) {
+      const invoiceIndex = this.invoices.findIndex(inv => inv.invoiceId === invoiceId);
+      if (invoiceIndex !== -1) {
+        // Create a new object to ensure reactivity
+        const updatedInvoice = {
+          ...this.invoices[invoiceIndex],
+          isPaid: true,
+          paidDate: new Date().toISOString().split('T')[0],
+          daysOverdue: 0
+        };
+        
+        // Replace the old invoice with the updated one
+        this.$patch((state) => {
+          state.invoices[invoiceIndex] = updatedInvoice;
+        });
+      }
     },
 
     // Pagination Handlers

@@ -1,10 +1,11 @@
 <script setup>
-import { defineAsyncComponent, ref } from "vue";
-const HomeDashboard = defineAsyncComponent(() => import("../components/UserComponents/HomeDashboard.vue"));
-const Clients = defineAsyncComponent(() => import("../components/UserComponents/ClientsList.vue"));
-const Sales = defineAsyncComponent(() => import("../components/UserComponents/SalesTracking.vue"));
-const Reports = defineAsyncComponent(() => import("../components/UserComponents/ReportsOverview.vue"));
-const Products = defineAsyncComponent(() => import("../components/UserComponents/ProductsList.vue"));
+import { defineAsyncComponent, ref, computed } from "vue";
+import { useAuthStore } from '../stores/authStore'
+import { useRouter } from 'vue-router'
+
+const UserManagement = defineAsyncComponent(() => import("../components/AdminComponents/UserManagement.vue"));
+const RoleManagement = defineAsyncComponent(() => import("../components/AdminComponents/RoleManagement.vue"));
+const HistoryLog = defineAsyncComponent(() => import("../components/AdminComponents/HistoryLog.vue"));
 const ProfileModal = defineAsyncComponent(() => import("../components/UserSideModals/ProfileModal.vue"));
 
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
@@ -13,8 +14,6 @@ import {
   faChartSimple,
   faPerson,
   faSuitcase,
-  faSquarePollHorizontal,
-  faBoxesStacked,
   faSignOutAlt,
 } from "@fortawesome/free-solid-svg-icons";
 
@@ -22,14 +21,19 @@ library.add(
   faChartSimple,
   faPerson,
   faSuitcase,
-  faSquarePollHorizontal,
-  faBoxesStacked,
   faSignOutAlt
 );
 
+const authStore = useAuthStore()
+const router = useRouter()
+
 const isSidebarOpen = ref(false);
-const currentView = ref("Dashboard");
+const currentView = ref("User");
 const isProfileModalVisible = ref(false);
+
+// Update permission checks to include manager for User Management
+const canManageUsers = computed(() => ['admin', 'manager'].includes(authStore.user?.role))
+const canManageRoles = computed(() => authStore.user?.role === 'admin')
 
 const toggleSidebar = () => {
   isSidebarOpen.value = !isSidebarOpen.value;
@@ -41,6 +45,11 @@ const toggleProfileModal = () => {
 
 const setView = (view) => {
   currentView.value = view;
+};
+
+const handleLogout = () => {
+  authStore.logout()
+  router.push('/')
 };
 </script>
 
@@ -65,9 +74,9 @@ const setView = (view) => {
             />
           </svg>
         </div>
-        <div class="section-title">{{ currentView }}</div>
+        <h1>Admin Dashboard</h1>
       </div>
-      <div class="header-icons">
+      <div class="header-right">
         <div class="icon" @click="toggleProfileModal">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -83,75 +92,72 @@ const setView = (view) => {
               d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
             />
           </svg>
-          <ProfileModal
-            v-if="isProfileModalVisible"
-            @close="isProfileModalVisible = false"
-            :isOpen="isProfileModalVisible"
-          />
         </div>
       </div>
     </header>
 
     <!-- Sidebar -->
-    <aside class="sidebar" :class="{ 'sidebar-open': isSidebarOpen }">
-      <nav class="nav-menu">
-        <a href="#" class="nav-item" @click="setView('Dashboard')">
-          <font-awesome-icon :icon="['fas', 'chart-simple']" class="nav-icon" />
-          Dashboard
-        </a>
-        <a href="#" class="nav-item" @click="setView('Clients')">
-          <font-awesome-icon :icon="['fas', 'person']" class="nav-icon" />
-          Clients
-        </a>
-        <a href="#" class="nav-item" @click="setView('Sales')">
-          <font-awesome-icon :icon="['fas', 'suitcase']" class="nav-icon" />
-          Sales
-        </a>
-        <a href="#" class="nav-item" @click="setView('Reports')">
-          <font-awesome-icon :icon="['fas', 'square-poll-horizontal']" class="nav-icon" />
-          Reports
-        </a>
-        <a href="#" class="nav-item" @click="setView('Products')">
-          <font-awesome-icon :icon="['fas', 'boxes-stacked']" class="nav-icon" />
-          Products
-        </a>
-      </nav>
-      <div class="logout-container">
-        <a href="#" class="nav-item logout-button">
-          <font-awesome-icon :icon="['fas', 'sign-out-alt']" class="nav-icon" />
-          Logout
-        </a>
+    <div :class="['sidebar', { 'sidebar-open': isSidebarOpen }]">
+      <div class="nav-items">
+        <div 
+          v-if="canManageUsers"
+          class="nav-item" 
+          :class="{ active: currentView === 'User' }" 
+          @click="setView('User')"
+        >
+          <font-awesome-icon icon="fa-solid fa-person" />
+          <span>User Management</span>
+        </div>
+        <div 
+          v-if="canManageRoles"
+          class="nav-item" 
+          :class="{ active: currentView === 'Role' }" 
+          @click="setView('Role')"
+        >
+          <font-awesome-icon icon="fa-solid fa-suitcase" />
+          <span>Role Management</span>
+        </div>
+        <div class="nav-item" :class="{ active: currentView === 'History' }" @click="setView('History')">
+          <font-awesome-icon icon="fa-solid fa-chart-simple" />
+          <span>History Log</span>
+        </div>
+        <div class="nav-item logout" @click="handleLogout">
+          <font-awesome-icon icon="fa-solid fa-sign-out-alt" />
+          <span>Logout</span>
+        </div>
       </div>
-    </aside>
+    </div>
 
     <!-- Main Content -->
     <main class="main-content">
-      <component :is="currentView === 'Dashboard' ? HomeDashboard : null" />
-      <component :is="currentView === 'Clients' ? Clients : null" />
-      <component :is="currentView === 'Sales' ? Sales : null" />
-      <component :is="currentView === 'Reports' ? Reports : null" />
-      <component :is="currentView === 'Products' ? Products : null" />
+      <UserManagement v-if="currentView === 'User' && canManageUsers" />
+      <RoleManagement v-if="currentView === 'Role' && canManageRoles" />
+      <HistoryLog v-if="currentView === 'History'" />
+      <div v-if="(currentView === 'User' && !canManageUsers) || (currentView === 'Role' && !canManageRoles)" 
+           class="unauthorized-message">
+        <h2>Unauthorized Access</h2>
+        <p>You don't have permission to access this section.</p>
+      </div>
     </main>
+
+    <!-- Profile Modal -->
+    <ProfileModal
+      v-if="isProfileModalVisible"
+      :isOpen="isProfileModalVisible"
+      @close="toggleProfileModal"
+    />
   </div>
 </template>
 
-<style>
-:root {
-  --primary-color: #2563eb;
-  --background-color: #f8fafc;
-  --text-color: #1e293b;
-  --sidebar-width: 250px;
-  --header-height: 64px;
-}
-
+<style scoped>
 h1 {
-  color: var(--text-color);
+  color: rgb(30, 41, 59);
   font-size: 2rem;
 }
 
 .layout {
   min-height: 100vh;
-  background-color: var(--background-color);
+  background-color: #f8fafc;
 }
 
 .header {
@@ -159,7 +165,7 @@ h1 {
   top: 0;
   right: 0;
   left: 0;
-  height: var(--header-height);
+  height: 64px;
   background: white;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   display: flex;
@@ -175,31 +181,25 @@ h1 {
   gap: 1rem;
 }
 
-.section-title {
-  font-size: 1.25rem;
-  font-weight: 500;
-  color: var(--text-color);
-}
-
-.header-icons {
+.header-right {
   display: flex;
-  gap: 1rem;
   align-items: center;
+  gap: 1rem;
 }
 
 .icon {
   width: 24px;
   height: 24px;
   cursor: pointer;
-  color: var(--text-color);
+  color: rgb(30, 41, 59)
 }
 
 .sidebar {
   position: fixed;
-  top: var(--header-height);
+  top: 64px;
   left: 0;
   bottom: 0;
-  width: var(--sidebar-width);
+  width: 250px;
   background: white;
   box-shadow: 1px 0 3px rgba(0, 0, 0, 0.1);
   transform: translateX(-100%);
@@ -212,7 +212,7 @@ h1 {
   transform: translateX(0);
 }
 
-.nav-menu {
+.nav-items {
   padding: 1rem 0;
   flex-grow: 1;
 }
@@ -221,47 +221,43 @@ h1 {
   display: flex;
   align-items: center;
   padding: 0.75rem 1.5rem;
-  color: var(--text-color);
+  color: rgb(30, 41, 59);
   text-decoration: none;
   transition: background-color 0.2s;
   gap: 0.75rem;
 }
 
 .nav-item:hover {
-  background-color: var(--background-color);
+  background-color: rgb(248, 250, 252);
 }
 
-.nav-icon {
-  font-size: 1.25rem;
+.nav-item.active {
+  background-color: rgb(237, 242, 247);
 }
 
-.logout-container {
-  border-top: 1px solid #e2e8f0;
-  padding: 1rem 0;
+.logout {
+  margin-top: auto;
+  color: #dc2626;
+  cursor: pointer;
 }
 
-.logout-button {
-  color: #ef4444;
-}
-
-.logout-button:hover {
+.logout:hover {
   background-color: #fee2e2;
+  color: #dc2626;
 }
 
 .main-content {
-  padding: calc(var(--header-height) + 2rem) 2rem 2rem;
+  padding: calc(64px + 2rem) 2rem 2rem;
   transition: margin-left 0.3s ease;
+  background: rgb(248, 250, 252);
 }
 
-.content-shifted {
-  margin-left: var(--sidebar-width);
+.unauthorized-message {
+  padding: 2rem;
+  text-align: center;
 }
 
 @media (max-width: 768px) {
-  .content-shifted {
-    margin-left: 0;
-  }
-
   .sidebar {
     z-index: 90;
   }
