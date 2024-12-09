@@ -33,7 +33,7 @@ const router = createRouter({
       path: '/admin', 
       name: 'admin', 
       component: () => import('../views/AdminView.vue'),
-      meta: { requiresAuth: true, requiredPermissions: ['manage_users', 'manage_roles'] }
+      meta: { requiresAuth: true, allowedRoles: ['admin', 'manager'] }
     },
     { 
       path: '/unauthorized', 
@@ -52,18 +52,18 @@ router.beforeEach(async (to, from, next) => {
   }
 
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
-  const requiresAdmin = to.matched.some(record => record.meta.requiresAdmin)
+  const allowedRoles = to.matched.some(record => record.meta.allowedRoles)?.meta?.allowedRoles || []
 
   // Redirect to appropriate page if already logged in and trying to access login page
   if (to.name === 'login' && authStore.isAuthenticated) {
-    next(authStore.isAdmin ? { name: 'admin' } : { name: 'home' })
+    next(['admin', 'manager'].includes(authStore.user?.role) ? { name: 'admin' } : { name: 'home' })
     return
   }
 
   if (requiresAuth && !authStore.isAuthenticated) {
     next({ name: 'login' })
-  } else if (requiresAdmin && !authStore.isAdmin) {
-    next({ name: 'home' })
+  } else if (allowedRoles.length > 0 && !allowedRoles.includes(authStore.user?.role)) {
+    next({ name: 'unauthorized' })
   } else {
     next()
   }

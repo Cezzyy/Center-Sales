@@ -1,5 +1,5 @@
 <script setup>
-import { defineAsyncComponent, ref } from "vue";
+import { defineAsyncComponent, ref, computed } from "vue";
 import { useAuthStore } from '../stores/authStore'
 import { useRouter } from 'vue-router'
 
@@ -30,6 +30,10 @@ const router = useRouter()
 const isSidebarOpen = ref(false);
 const currentView = ref("User");
 const isProfileModalVisible = ref(false);
+
+// Update permission checks to include manager for User Management
+const canManageUsers = computed(() => ['admin', 'manager'].includes(authStore.user?.role))
+const canManageRoles = computed(() => authStore.user?.role === 'admin')
 
 const toggleSidebar = () => {
   isSidebarOpen.value = !isSidebarOpen.value;
@@ -95,11 +99,21 @@ const handleLogout = () => {
     <!-- Sidebar -->
     <div :class="['sidebar', { 'sidebar-open': isSidebarOpen }]">
       <div class="nav-items">
-        <div class="nav-item" :class="{ active: currentView === 'User' }" @click="setView('User')">
+        <div 
+          v-if="canManageUsers"
+          class="nav-item" 
+          :class="{ active: currentView === 'User' }" 
+          @click="setView('User')"
+        >
           <font-awesome-icon icon="fa-solid fa-person" />
           <span>User Management</span>
         </div>
-        <div class="nav-item" :class="{ active: currentView === 'Role' }" @click="setView('Role')">
+        <div 
+          v-if="canManageRoles"
+          class="nav-item" 
+          :class="{ active: currentView === 'Role' }" 
+          @click="setView('Role')"
+        >
           <font-awesome-icon icon="fa-solid fa-suitcase" />
           <span>Role Management</span>
         </div>
@@ -116,9 +130,14 @@ const handleLogout = () => {
 
     <!-- Main Content -->
     <main class="main-content">
-      <component :is="currentView === 'User' ? UserManagement : null" />
-      <component :is="currentView === 'Role' ? RoleManagement : null" />
-      <component :is="currentView === 'History' ? HistoryLog : null" />
+      <UserManagement v-if="currentView === 'User' && canManageUsers" />
+      <RoleManagement v-if="currentView === 'Role' && canManageRoles" />
+      <HistoryLog v-if="currentView === 'History'" />
+      <div v-if="(currentView === 'User' && !canManageUsers) || (currentView === 'Role' && !canManageRoles)" 
+           class="unauthorized-message">
+        <h2>Unauthorized Access</h2>
+        <p>You don't have permission to access this section.</p>
+      </div>
     </main>
 
     <!-- Profile Modal -->
@@ -231,6 +250,11 @@ h1 {
   padding: calc(64px + 2rem) 2rem 2rem;
   transition: margin-left 0.3s ease;
   background: rgb(248, 250, 252);
+}
+
+.unauthorized-message {
+  padding: 2rem;
+  text-align: center;
 }
 
 @media (max-width: 768px) {

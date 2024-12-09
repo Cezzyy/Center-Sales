@@ -8,15 +8,15 @@ const mockUsers = [
     password: 'admin123',
     role: 'admin',
     username: 'Admin User',
-    position: 'System Administrator'
+    position: 'System Administrator',
   },
   {
     id: 2,
     email: 'manager@center.com',
     password: 'manager123',
-    role: 'admin',
+    role: 'manager',
     username: 'Sales Manager',
-    position: 'Sales Manager'
+    position: 'Sales Manager',
   },
   {
     id: 3,
@@ -24,7 +24,7 @@ const mockUsers = [
     password: 'sales123',
     role: 'general_staff',
     username: 'Sales Staff',
-    position: 'Sales Representative'
+    position: 'Sales Representative',
   },
   {
     id: 4,
@@ -32,7 +32,7 @@ const mockUsers = [
     password: 'clerk123',
     role: 'user',
     username: 'Sales Clerk',
-    position: 'Sales Clerk'
+    position: 'Sales Clerk',
   },
   {
     id: 5,
@@ -40,7 +40,7 @@ const mockUsers = [
     password: 'sales2024',
     role: 'general_staff',
     username: 'John Smith',
-    position: 'Sales Staff'
+    position: 'Sales Staff',
   },
   {
     id: 6,
@@ -48,20 +48,20 @@ const mockUsers = [
     password: 'acc2024',
     role: 'general_staff',
     username: 'Mary Johnson',
-    position: 'Accounting Staff'
-  }
+    position: 'Accounting Staff',
+  },
 ]
 
 export const useAuthStore = defineStore('auth', {
   state: () => {
     const token = localStorage.getItem('auth_token')
     const storedUser = localStorage.getItem('user')
-    
+
     return {
       user: storedUser ? JSON.parse(storedUser) : null,
       isAuthenticated: !!token && !!storedUser,
       token: token || null,
-      users: mockUsers
+      users: mockUsers,
     }
   },
 
@@ -70,37 +70,37 @@ export const useAuthStore = defineStore('auth', {
     isUser: (state) => state.user?.role === 'user',
     isGeneralStaff: (state) => state.user?.role === 'general_staff',
     currentUser: (state) => state.user,
-    getAllUsers: (state) => state.users
+    getAllUsers: (state) => state.users,
   },
 
   actions: {
     async login(email, password) {
       try {
         // Find user in mock database
-        const user = mockUsers.find(u => u.email === email && u.password === password)
-        
+        const user = mockUsers.find((u) => u.email === email && u.password === password)
+
         if (!user) {
           return { success: false, error: 'Invalid credentials' }
         }
 
         // Generate mock token (in real app, this would come from backend)
         const token = btoa(`${user.email}:${user.role}:${Date.now()}`)
-        
+
         // Set user state
         this.user = {
           id: user.id,
           email: user.email,
           role: user.role,
           username: user.username,
-          position: user.position
+          position: user.position,
         }
         this.isAuthenticated = true
         this.token = token
-        
+
         // Store auth data in localStorage
         localStorage.setItem('auth_token', token)
         localStorage.setItem('user', JSON.stringify(this.user))
-        
+
         return { success: true, user: this.user }
       } catch (error) {
         console.error('Login error:', error)
@@ -119,17 +119,17 @@ export const useAuthStore = defineStore('auth', {
     async checkAuth() {
       const token = localStorage.getItem('auth_token')
       const storedUser = localStorage.getItem('user')
-      
+
       if (token && storedUser) {
         try {
           const user = JSON.parse(storedUser)
-          
+
           // Validate token format (in a real app, you'd verify with backend)
           const [email, role, timestamp] = atob(token).split(':')
           if (!email || !role || !timestamp) {
             throw new Error('Invalid token format')
           }
-          
+
           this.user = user
           this.isAuthenticated = true
           this.token = token
@@ -141,6 +141,6 @@ export const useAuthStore = defineStore('auth', {
         }
       }
       return false
-    }
-  }
+    },
+  },
 })
