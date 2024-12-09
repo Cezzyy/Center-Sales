@@ -51,22 +51,28 @@ router.beforeEach(async (to, from, next) => {
     await authStore.checkAuth()
   }
 
-  const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
-  const allowedRoles = to.matched.some(record => record.meta.allowedRoles)?.meta?.allowedRoles || []
-
-  // Redirect to appropriate page if already logged in and trying to access login page
+  // Handle login page redirection
   if (to.name === 'login' && authStore.isAuthenticated) {
     next(['admin', 'manager'].includes(authStore.user?.role) ? { name: 'admin' } : { name: 'home' })
     return
   }
 
-  if (requiresAuth && !authStore.isAuthenticated) {
+  // Check if route requires authentication
+  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     next({ name: 'login' })
-  } else if (allowedRoles.length > 0 && !allowedRoles.includes(authStore.user?.role)) {
-    next({ name: 'unauthorized' })
-  } else {
-    next()
+    return
   }
+
+  // Check for role-based access
+  if (to.meta.allowedRoles) {
+    const userRole = authStore.user?.role
+    if (!userRole || !to.meta.allowedRoles.includes(userRole)) {
+      next({ name: 'unauthorized' })
+      return
+    }
+  }
+
+  next()
 })
 
 // Setup route guards

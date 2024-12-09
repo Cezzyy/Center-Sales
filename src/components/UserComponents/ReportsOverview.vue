@@ -5,7 +5,11 @@ import { useOrderInvoiceStore } from '@/stores/salesStore'
 import { saveAs } from 'file-saver'
 import * as XLSX from 'xlsx'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-import { faChartLine, faPlus } from '@fortawesome/free-solid-svg-icons'
+import { library } from '@fortawesome/fontawesome-svg-core'
+import { faChartLine, faPlus, faEdit } from '@fortawesome/free-solid-svg-icons'
+
+library.add(faChartLine, faPlus, faEdit)
+
 import { useActivityLog } from '@/composables/useActivityLog'
 import { usePermissions } from '@/composables/usePermissions'
 
@@ -17,6 +21,7 @@ const { logAction } = activityLog
 const { can } = usePermissions()
 
 const AddReportModal = defineAsyncComponent(() => import('../UserSideModals/AddReportModal.vue'))
+const EditReportModal = defineAsyncComponent(() => import('../UserSideModals/EditReportModal.vue'))
 
 // Reactive references for filters and pagination
 const startDate = ref('')
@@ -27,6 +32,8 @@ const itemsPerPage = ref(10)
 const sortBy = ref('date')
 const sortDirection = ref('desc')
 const showAddReportModal = ref(false)
+const showEditReportModal = ref(false)
+const selectedReport = ref(null)
 
 // Computed Properties
 const reports = computed(() => reportsStore.filteredReports)
@@ -48,24 +55,24 @@ const handleSort = (column) => {
     sortDirection.value = 'asc'
   }
   reportsStore.handleSort(column)
-  logAction({
-    action: 'SORT_REPORTS',
-    category: 'reports',
-    details: `Reports sorted by ${column} in ${sortDirection.value} order`,
-    additionalData: { column, direction: sortDirection.value },
-  })
+  // logAction({
+  //   action: 'SORT_REPORTS',
+  //   category: 'reports',
+  //   details: `Reports sorted by ${column} in ${sortDirection.value} order`,
+  //   additionalData: { column, direction: sortDirection.value },
+  // })
 }
 
 const changePage = (page) => {
   if (page >= 1 && page <= totalPages.value) {
     currentPage.value = page
   }
-  logAction({
-    action: 'CHANGE_PAGE',
-    category: 'reports',
-    details: `Navigated to reports page ${page}`,
-    additionalData: { page, totalPages: totalPages.value },
-  })
+  // logAction({
+  //   action: 'CHANGE_PAGE',
+  //   category: 'reports',
+  //   details: `Navigated to reports page ${page}`,
+  //   additionalData: { page, totalPages: totalPages.value },
+  // })
 }
 
 const exportToExcel = async () => {
@@ -138,10 +145,36 @@ const addReport = async (reportData) => {
       action: 'CREATE_REPORT',
       category: 'report',
       details: `Created new report #${reportData.reportId} for order #${reportData.orderId} - Customer: ${reportData.customerName}`,
-      targetId: reportData.reportId
+      targetId: reportData.reportId,
     })
   } catch (error) {
     console.error('Failed to create report:', error)
+  }
+}
+
+const editReport = (report) => {
+  selectedReport.value = { ...report }
+  showEditReportModal.value = true
+}
+
+const handleUpdateReport = async (updatedReport) => {
+  if (!can.write()) {
+    console.error('Permission denied: Cannot edit reports')
+    return
+  }
+
+  try {
+    await reportsStore.updateReport(updatedReport)
+    showEditReportModal.value = false
+    selectedReport.value = null
+    await logAction({
+      action: 'UPDATE_REPORT',
+      category: 'report',
+      details: `Updated report #${updatedReport.reportId}`,
+      targetId: updatedReport.reportId,
+    })
+  } catch (error) {
+    console.error('Failed to update report:', error)
   }
 }
 
@@ -150,15 +183,15 @@ watch([startDate, endDate, searchQuery], () => {
   currentPage.value = 1
   reportsStore.setDateFilter(startDate.value, endDate.value)
   reportsStore.setSearchQuery(searchQuery.value)
-  logAction({
-    action: 'APPLY_FILTERS',
-    category: 'reports',
-    details: 'Applied report filters',
-    additionalData: {
-      dateRange: { start: startDate.value, end: endDate.value },
-      searchQuery: searchQuery.value,
-    },
-  })
+  // logAction({
+  //   action: 'APPLY_FILTERS',
+  //   category: 'reports',
+  //   details: 'Applied report filters',
+  //   additionalData: {
+  //     dateRange: { start: startDate.value, end: endDate.value },
+  //     searchQuery: searchQuery.value,
+  //   },
+  // })
 })
 </script>
 
@@ -245,7 +278,10 @@ watch([startDate, endDate, searchQuery], () => {
             <td>{{ report.status }}</td>
             <td>{{ report.paymentStatus }}</td>
             <td v-if="can.write()">
-              <button class="btn-edit" @click="editReport(report)">Edit</button>
+              <button class="btn-edit" @click="editReport(report)">
+                <font-awesome-icon icon="fa-solid fa-edit" class="edit-icon" />
+                Edit
+              </button>
             </td>
           </tr>
         </tbody>
@@ -291,6 +327,15 @@ watch([startDate, endDate, searchQuery], () => {
 
     <!-- Add Report Modal -->
     <AddReportModal v-model="showAddReportModal" :orders="orderStore.orders" @submit="addReport" />
+
+    <!-- Edit Report Modal -->
+    <EditReportModal
+      v-if="showEditReportModal"
+      :isOpen="showEditReportModal"
+      :report="selectedReport"
+      @close="showEditReportModal = false"
+      @update="handleUpdateReport"
+    />
   </div>
 </template>
 
@@ -612,5 +657,27 @@ watch([startDate, endDate, searchQuery], () => {
 
 .empty-state__button svg {
   margin-right: 0.5rem;
+}
+
+.btn-edit {
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background-color 0.2s;
+}
+
+.btn-edit:hover {
+  background-color: #2563eb;
+}
+
+.edit-icon {
+  font-size: 0.875rem;
 }
 </style>
