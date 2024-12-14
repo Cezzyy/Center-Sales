@@ -1,15 +1,7 @@
-import { defineStore } from 'pinia';
-// import { computed } from 'vue';
-
-// Utility function for the filter getter problem
-// const createFilterMatcher = (filterValue, field) => {
-//   if (!filterValue) return () => true;
-//   const lowercaseFilter = filterValue.toLowerCase();
-//   return (item) => item[field].toLowerCase().includes(lowercaseFilter);
-// };
+import { defineStore } from 'pinia'
+import { OrderService } from '@/services/orderService'
 
 export const useOrderInvoiceStore = defineStore('orderInvoice', {
-  // State
   state: () => ({
     // Modals
     isAddSalesModalOpen: false,
@@ -17,290 +9,354 @@ export const useOrderInvoiceStore = defineStore('orderInvoice', {
     isViewOrderModalOpen: false,
     isEditOrderModalOpen: false,
     isEditInvoiceModalOpen: false,
+    isLoading: false,
+    error: null,
 
     // Data for modals
-    viewOrder: {
-      orderId: '',
-      customerName: '',
-      productName: '',
-      quantity: 0,
-      salesRepresentative: '',
-      amount: 0,
-      status: '',
-    },
-    editOrder: {
-      orderId: '',
-      customerName: '',
-      productName: '',
-      quantity: 0,
-      salesRepresentative: '',
-      amount: 0,
-      status: '',
-    },
-    editInvoice: {
-      invoiceId: '',
-      customerName: '',
-      amount: 0,
-      dueDate: '',
-    },
+    viewOrder: null,
+    editOrder: null,
+    editInvoice: null,
 
     // Orders and Invoices
-    orders: [
-      {
-        orderId: 'ORD-001',
-        customerName: 'John Doe',
-        productName: 'Product A',
-        amount: 1500,
-        status: 'pending',
-        quantity: 10,
-        salesRepresentative: 'Neil Vallecer',
-        date: '2024-01-01',
-      },
-      {
-        orderId: 'ORD-002',
-        customerName: 'Jane Smith',
-        productName: 'Product B',
-        amount: 1200,
-        status: 'completed',
-        quantity: 5,
-        salesRepresentative: 'Neil Vallecer',
-        date: '2024-01-02',
-      },
-    ],
-    invoices: [
-      {
-        invoiceId: 'INV-001',
-        customer: 'John Doe',
-        amount: 1500,
-        dueDate: '2024-02-01',
-        daysOverdue: 15,
-        isPaid: false,
-        paidDate: null
-      },
-      {
-        invoiceId: 'INV-002',
-        customer: 'Jane Smith',
-        amount: 1200,
-        dueDate: '2024-02-10',
-        daysOverdue: 0,
-        isPaid: false,
-        paidDate: null
-      },
-    ],
+    orders: [],
+    invoices: [],
 
-    // Pagination
-    currentPageOrders: 1,
-    currentPageInvoices: 1,
-    itemsPerPage: 10,
-
-    // Filters
+    // Filters and Pagination
     orderFilters: {
-      dateFrom: '',
-      dateTo: '',
       orderId: '',
       customerName: '',
       productName: '',
       status: '',
+      startDate: '',
+      endDate: '',
     },
     invoiceFilters: {
       invoiceId: '',
-      customer: '',
+      customerName: '',
+      status: '',
+      startDate: '',
+      endDate: '',
     },
+    currentPageOrders: 1,
+    currentPageInvoices: 1,
+    itemsPerPage: 10,
   }),
 
-  // Getters
   getters: {
     filteredOrders(state) {
-      return state.orders.filter(order => {
+      return state.orders.filter((order) => {
         const matchesOrderId =
           !state.orderFilters.orderId ||
-          order.orderId.toLowerCase().includes(state.orderFilters.orderId.toLowerCase());
+          order.orderId.toLowerCase().includes(state.orderFilters.orderId.toLowerCase())
 
         const matchesCustomer =
           !state.orderFilters.customerName ||
-          order.customerName.toLowerCase().includes(state.orderFilters.customerName.toLowerCase());
+          order.customerName.toLowerCase().includes(state.orderFilters.customerName.toLowerCase())
 
         const matchesProduct =
           !state.orderFilters.productName ||
-          order.productName.toLowerCase().includes(state.orderFilters.productName.toLowerCase());
+          order.productName.toLowerCase().includes(state.orderFilters.productName.toLowerCase())
 
         const matchesStatus =
-          !state.orderFilters.status || order.status === state.orderFilters.status;
+          !state.orderFilters.status ||
+          order.status.toLowerCase() === state.orderFilters.status.toLowerCase()
 
-        const matchesDateRange =
-          (!state.orderFilters.dateFrom || !state.orderFilters.dateTo) ||
-          (order.date >= state.orderFilters.dateFrom && order.date <= state.orderFilters.dateTo);
-
-        return (
-          matchesOrderId &&
-          matchesCustomer &&
-          matchesProduct &&
-          matchesStatus &&
-          matchesDateRange
-        );
-      });
+        return matchesOrderId && matchesCustomer && matchesProduct && matchesStatus
+      })
     },
-    //Solution for the filter getter problem part 2:
-    // filteredOrders: computed(state => {
-    //   // Create matchers only once per filter change
-    //   const matchers = {
-    //     orderId: createFilterMatcher(state.orderFilters.orderId, 'orderId'),
-    //     customerName: createFilterMatcher(state.orderFilters.customerName, 'customerName'),
-    //     productName: createFilterMatcher(state.orderFilters.productName, 'productName'),
-    //     status: state.orderFilters.status
-    //       ? (order) => order.status === state.orderFilters.status
-    //       : () => true
-    //   };
 
-    //   // Date range matcher
-    //   const dateRangeMatcher = (order) => {
-    //     if (!state.orderFilters.dateFrom || !state.orderFilters.dateTo) return true;
-    //     return order.date >= state.orderFilters.dateFrom &&
-    //            order.date <= state.orderFilters.dateTo;
-    //   };
-
-    //   // Single pass filter
-    //   return state.orders.filter(order =>
-    //     matchers.orderId(order) &&
-    //     matchers.customerName(order) &&
-    //     matchers.productName(order) &&
-    //     matchers.status(order) &&
-    //     dateRangeMatcher(order)
-    //   );
-    // }),
     paginatedOrders(state) {
-      const startIndex = (state.currentPageOrders - 1) * state.itemsPerPage;
-      const endIndex = startIndex + state.itemsPerPage;
-      return this.filteredOrders.slice(startIndex, endIndex);
+      const startIndex = (state.currentPageOrders - 1) * state.itemsPerPage
+      return this.filteredOrders.slice(startIndex, startIndex + state.itemsPerPage)
     },
+
     totalOrderPages(state) {
-      return Math.ceil(this.filteredOrders.length / state.itemsPerPage);
+      return Math.ceil(this.filteredOrders.length / state.itemsPerPage)
     },
+
     filteredInvoices(state) {
-      return state.invoices.filter(invoice => {
+      return state.invoices.filter((invoice) => {
         const matchesInvoiceId =
           !state.invoiceFilters.invoiceId ||
-          invoice.invoiceId.toLowerCase().includes(state.invoiceFilters.invoiceId.toLowerCase());
+          invoice.invoiceId.toLowerCase().includes(state.invoiceFilters.invoiceId.toLowerCase())
 
         const matchesCustomer =
-          !state.invoiceFilters.customer ||
-          invoice.customer.toLowerCase().includes(state.invoiceFilters.customer.toLowerCase());
+          !state.invoiceFilters.customerName ||
+          invoice.customerName
+            .toLowerCase()
+            .includes(state.invoiceFilters.customerName.toLowerCase())
 
-        return matchesInvoiceId && matchesCustomer;
-      });
+        const matchesStatus =
+          !state.invoiceFilters.status ||
+          invoice.status.toLowerCase() === state.invoiceFilters.status.toLowerCase()
+
+        return matchesInvoiceId && matchesCustomer && matchesStatus
+      })
     },
+
     paginatedInvoices(state) {
-      const startIndex = (state.currentPageInvoices - 1) * state.itemsPerPage;
-      const endIndex = startIndex + state.itemsPerPage;
-      return this.filteredInvoices.slice(startIndex, endIndex);
+      const startIndex = (state.currentPageInvoices - 1) * state.itemsPerPage
+      return this.filteredInvoices.slice(startIndex, startIndex + state.itemsPerPage)
     },
+
     totalInvoicePages(state) {
-      return Math.ceil(this.filteredInvoices.length / state.itemsPerPage);
+      return Math.ceil(this.filteredInvoices.length / state.itemsPerPage)
     },
+
     getInvoiceById: (state) => (id) => {
-      return state.invoices.find(invoice => invoice.invoiceId === id);
+      return state.invoices.find((invoice) => invoice.id === id)
     },
   },
 
-  // Actions
   actions: {
     // Modal Handlers
     openModal(modalName) {
-      this[`is${modalName}ModalOpen`] = true;
+      const modalStateName = `is${modalName}ModalOpen`
+      this[modalStateName] = true
     },
+
     closeModal(modalName) {
-      this[`is${modalName}ModalOpen`] = false;
+      const modalStateName = `is${modalName}ModalOpen`
+      this[modalStateName] = false
     },
 
-    // Handle submission from modals
-    handleEditOrderSubmit(updatedOrder) {
-      const index = this.orders.findIndex(order => order.orderId === updatedOrder.orderId);
-      if (index !== -1) {
-        this.orders[index] = { ...this.orders[index], ...updatedOrder };
-        this.closeModal('EditOrder');
-        return this.orders[index];
+    // Order Management
+    async fetchOrders() {
+      try {
+        this.isLoading = true
+        this.error = null
+        const orders = await OrderService.getOrders()
+        this.orders = orders
+      } catch (error) {
+        this.error = error.message
+        console.error('Error fetching orders:', error)
+      } finally {
+        this.isLoading = false
       }
-      return null;
     },
 
-    handleEditInvoiceSubmit(updatedInvoice) {
-      const index = this.invoices.findIndex(invoice => invoice.invoiceId === updatedInvoice.invoiceId);
-      if (index !== -1) {
-        this.invoices[index] = { ...this.invoices[index], ...updatedInvoice };
-        this.closeModal('EditInvoice');
-        return this.invoices[index];
+    async handleAddSalesSubmit(salesData) {
+      try {
+        this.isLoading = true
+        this.error = null
+        const newOrder = await OrderService.addOrder(salesData)
+        this.orders.unshift(newOrder)
+        this.closeModal('AddSales')
+      } catch (error) {
+        this.error = error.message
+        console.error('Error adding order:', error)
+      } finally {
+        this.isLoading = false
       }
-      return null;
     },
 
-    handleAddInvoiceSubmit(updatedInvoice) {
-      this.invoices.push(updatedInvoice);
-      this.closeModal('AddInvoice');
+    async handleEditOrderSubmit(updatedOrder) {
+      try {
+        this.isLoading = true
+        this.error = null
+        const order = await OrderService.updateOrder(updatedOrder.id, updatedOrder)
+        const index = this.orders.findIndex((o) => o.id === order.id)
+        if (index !== -1) {
+          this.orders[index] = order
+        }
+        this.closeModal('EditOrder')
+      } catch (error) {
+        this.error = error.message
+        console.error('Error updating order:', error)
+      } finally {
+        this.isLoading = false
+      }
     },
 
-    handleAddSalesSubmit(salesData) {
-      this.orders.push(salesData);
-      this.closeModal('AddSales');
+    async deleteOrder(orderId, orderData) {
+      try {
+        this.isLoading = true
+        this.error = null
+
+        await OrderService.deleteOrder(orderId, orderData)
+
+        // Update local state
+        this.orders = this.orders.filter((order) => order.orderId !== orderId)
+
+        // Close any open modals
+        this.closeModal('ViewOrder')
+        this.closeModal('EditOrder')
+
+        return true
+      } catch (error) {
+        this.error = error.message || 'Failed to delete order'
+        throw error
+      } finally {
+        this.isLoading = false
+      }
     },
 
-    markInvoiceAsPaid(invoiceId) {
-      const invoiceIndex = this.invoices.findIndex(inv => inv.invoiceId === invoiceId);
-      if (invoiceIndex !== -1) {
-        // Create a new object to ensure reactivity
-        const updatedInvoice = {
-          ...this.invoices[invoiceIndex],
-          isPaid: true,
-          paidDate: new Date().toISOString().split('T')[0],
-          daysOverdue: 0
-        };
-        
-        // Replace the old invoice with the updated one
-        this.$patch((state) => {
-          state.invoices[invoiceIndex] = updatedInvoice;
-        });
+    // Invoice Management
+    async fetchInvoices() {
+      try {
+        this.isLoading = true
+        this.error = null
+        const invoices = await OrderService.getInvoices()
+        this.invoices = invoices
+      } catch (error) {
+        this.error = error.message
+        console.error('Error fetching invoices:', error)
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    async handleAddInvoiceSubmit(newInvoice) {
+      try {
+        this.isLoading = true
+        this.error = null
+        const invoice = await OrderService.addInvoice(newInvoice)
+        this.invoices.push(invoice)
+        this.closeModal('AddInvoice')
+      } catch (error) {
+        this.error = error.message
+        console.error('Error adding invoice:', error)
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    async handleEditInvoiceSubmit(updatedInvoice) {
+      try {
+        this.isLoading = true
+        this.error = null
+        const invoice = await OrderService.updateInvoice(updatedInvoice.id, updatedInvoice)
+        const index = this.invoices.findIndex((i) => i.id === invoice.id)
+        if (index !== -1) {
+          this.invoices[index] = invoice
+        }
+        this.closeModal('EditInvoice')
+      } catch (error) {
+        this.error = error.message
+        console.error('Error updating invoice:', error)
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    async deleteInvoice(invoiceId, invoiceData) {
+      try {
+        this.isLoading = true
+        this.error = null
+
+        // Always fetch fresh data from database first
+        await this.fetchInvoices()
+        const invoice = this.invoices.find((inv) => inv.id === invoiceId)
+
+        if (!invoice) {
+          throw new Error('Invoice not found')
+        }
+
+        await OrderService.deleteInvoice(invoiceId, {
+          salesRepresentative: invoice.salesRepresentative,
+          ...invoiceData,
+        })
+
+        // Update local state
+        this.invoices = this.invoices.filter((inv) => inv.id !== invoiceId)
+        this.closeModal('EditInvoice')
+
+        return true
+      } catch (error) {
+        console.error('Delete invoice error:', error)
+        this.error = error.message || 'Failed to delete invoice'
+        throw error
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    async markInvoiceAsPaid(invoiceId) {
+      try {
+        this.isLoading = true
+        this.error = null
+
+        // Get current invoice for sales representative info
+        const invoice = this.invoices.find((inv) => inv.id === invoiceId)
+        const salesRepresentative = invoice?.salesRepresentative || 'system'
+
+        // Let OrderService handle the validation and update
+        const updatedInvoice = await OrderService.markInvoiceAsPaid(invoiceId, {
+          salesRepresentative,
+        })
+
+        // Update local state after successful update
+        await this.fetchInvoices()
+
+        return true
+      } catch (error) {
+        console.error('Mark as paid error:', error)
+        this.error = error.message || 'Failed to mark invoice as paid'
+        throw error
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    async refreshInvoices() {
+      try {
+        this.isLoading = true
+        this.error = null
+        const invoices = await OrderService.getInvoices()
+        this.invoices = invoices
+      } catch (error) {
+        this.error = error.message || 'Failed to refresh invoices'
+        throw error
+      } finally {
+        this.isLoading = false
       }
     },
 
     // Pagination Handlers
     goToPage(pageType, page) {
-      if (pageType === 'orders' && page >= 1 && page <= this.totalOrderPages) {
-        this.currentPageOrders = page;
-      } else if (pageType === 'invoices' && page >= 1 && page <= this.totalInvoicePages) {
-        this.currentPageInvoices = page;
-      }
-    },
-    goToPreviousPage(pageType) {
-      if (pageType === 'orders' && this.currentPageOrders > 1) {
-        this.currentPageOrders--;
-      } else if (pageType === 'invoices' && this.currentPageInvoices > 1) {
-        this.currentPageInvoices--;
-      }
-    },
-    goToNextPage(pageType) {
-      if (pageType === 'orders' && this.currentPageOrders < this.totalOrderPages) {
-        this.currentPageOrders++;
-      } else if (pageType === 'invoices' && this.currentPageInvoices < this.totalInvoicePages) {
-        this.currentPageInvoices++;
+      if (pageType === 'orders') {
+        this.currentPageOrders = page
+      } else {
+        this.currentPageInvoices = page
       }
     },
 
-    // Reset Filters
+    goToPreviousPage(pageType) {
+      if (pageType === 'orders' && this.currentPageOrders > 1) {
+        this.currentPageOrders--
+      } else if (pageType === 'invoices' && this.currentPageInvoices > 1) {
+        this.currentPageInvoices--
+      }
+    },
+
+    goToNextPage(pageType) {
+      if (pageType === 'orders' && this.currentPageOrders < this.totalOrderPages) {
+        this.currentPageOrders++
+      } else if (pageType === 'invoices' && this.currentPageInvoices < this.totalInvoicePages) {
+        this.currentPageInvoices++
+      }
+    },
+
+    // Filter Handlers
     resetFilters(filterType) {
       if (filterType === 'orders') {
         this.orderFilters = {
-          dateFrom: '',
-          dateTo: '',
           orderId: '',
           customerName: '',
           productName: '',
           status: '',
-        };
-      } else if (filterType === 'invoices') {
+          startDate: '',
+          endDate: '',
+        }
+      } else {
         this.invoiceFilters = {
           invoiceId: '',
-          customer: '',
-        };
+          customerName: '',
+          status: '',
+          startDate: '',
+          endDate: '',
+        }
       }
     },
   },
-});
+})
