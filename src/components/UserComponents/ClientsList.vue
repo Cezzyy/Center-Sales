@@ -1,5 +1,5 @@
 <script setup>
-import { defineAsyncComponent, computed, ref } from 'vue'
+import { defineAsyncComponent, computed, ref, onMounted } from 'vue'
 import { useClientStore } from '@/stores/clientStore'
 import { useAuthStore } from '@/stores/authStore'
 import { storeToRefs } from 'pinia'
@@ -11,6 +11,15 @@ const store = useClientStore()
 const authStore = useAuthStore()
 const { logAction } = useActivityLog()
 const { can } = usePermissions()
+
+// Fetch clients when component mounts
+onMounted(async () => {
+  try {
+    await store.fetchClients()
+  } catch (error) {
+    console.error('Failed to fetch clients:', error)
+  }
+})
 
 // Lazy load modals for better initial load performance
 const AddClientModal = defineAsyncComponent(() => import('../UserSideModals/AddClientModal.vue'))
@@ -27,6 +36,8 @@ const {
   isModalOpen,
   showEditClientModal,
   selectedClient,
+  isLoading,
+  error,
 } = storeToRefs(store)
 
 // Add state for delete confirmation
@@ -50,36 +61,16 @@ const handleAddClient = async (clientData) => {
     return
   }
 
-  // Check if user is authenticated
-  if (!authStore.currentUser) {
-    console.error('User not authenticated')
-    return
-  }
-
   try {
     const newClient = await store.addClient(clientData)
-    console.log('New client created:', newClient) // Debug log
-    
-    if (newClient && newClient.id) {
-      // Log the client addition
-      await logAction({
-        action: 'ADD_CLIENT',
-        category: 'client',
-        details: `Added client: ${clientData.firstName} ${clientData.lastName} from ${clientData.company}`,
-        targetId: newClient.id,
-        changes: {
-          firstName: clientData.firstName,
-          lastName: clientData.lastName,
-          email: clientData.email,
-          company: clientData.company,
-          phone: clientData.phone,
-        },
-      })
-    } else {
-      console.error('Failed to create client: No ID returned')
-    }
+    logAction('Added new client', {
+      clientId: newClient.id,
+      clientName: `${newClient.firstName} ${newClient.lastName}`,
+      userId: authStore.currentUser?.id,
+    })
+    store.closeModal()
   } catch (error) {
-    console.error('Failed to add client:', error)
+    console.error('Error adding client:', error)
   }
 }
 
@@ -90,21 +81,15 @@ const handleEditClient = async (clientData) => {
   }
 
   try {
-    await store.updateClient(clientData)
-    logAction({
-      action: 'EDIT CLIENT',
-      category: 'client',
-      targetId: clientData.id,
-      details: `Updated client: ${clientData.firstName} ${clientData.lastName}`,
-      changes: {
-        firstName: clientData.firstName,
-        lastName: clientData.lastName,
-        email: clientData.email,
-        company: clientData.company,
-      },
+    const updatedClient = await store.updateClient(clientData)
+    logAction('Updated client', {
+      clientId: updatedClient.id,
+      clientName: `${updatedClient.firstName} ${updatedClient.lastName}`,
+      userId: authStore.currentUser?.id,
     })
+    store.closeEditModal()
   } catch (error) {
-    console.error('Failed to update client:', error)
+    console.error('Error updating client:', error)
   }
 }
 
@@ -121,21 +106,16 @@ const confirmDelete = async () => {
   if (!clientToDelete.value) return
 
   try {
-    const client = clientToDelete.value
-    await store.deleteClient(client.id)
-
-    // Log the client deletion
-    await logAction({
-      action: 'DELETE_CLIENT',
-      category: 'client',
-      details: `Deleted client: ${client.firstName} ${client.lastName} from ${client.company}`,
-      targetId: client.id,
+    await store.deleteClient(clientToDelete.value.id)
+    logAction('Deleted client', {
+      clientId: clientToDelete.value.id,
+      clientName: `${clientToDelete.value.firstName} ${clientToDelete.value.lastName}`,
+      userId: authStore.currentUser?.id,
     })
-
     showDeleteModal.value = false
     clientToDelete.value = null
   } catch (error) {
-    console.error('Failed to delete client:', error)
+    console.error('Error deleting client:', error)
   }
 }
 
@@ -146,17 +126,15 @@ const cancelDelete = () => {
 
 // Navigation handlers
 const handlePageChange = (page) => {
-  if (page >= 1 && page <= totalPages.value) {
-    store.changePage(page)
-  }
+  store.changePage(page)
 }
 
 const goToNextPage = () => {
-  handlePageChange(currentPage.value + 1)
+  store.changePage(currentPage.value + 1)
 }
 
 const goToPreviousPage = () => {
-  handlePageChange(currentPage.value - 1)
+  store.changePage(currentPage.value - 1)
 }
 </script>
 
@@ -182,6 +160,13 @@ const goToPreviousPage = () => {
       </button>
     </div>
 
+    <!-- Add loading and error states -->
+    <div v-if="isLoading" class="loading-spinner">Loading...</div>
+
+    <div v-if="error" class="error-message">
+      {{ error }}
+    </div>
+
     <!-- Modals -->
     <AddClientModal
       v-if="isModalOpen"
@@ -192,7 +177,8 @@ const goToPreviousPage = () => {
 
     <EditClientModal
       v-if="showEditClientModal"
-      :clientData="selectedClient"
+      :isOpen="showEditClientModal"
+      :client="selectedClient"
       @close="store.closeEditModal"
       @submit="handleEditClient"
     />
@@ -574,5 +560,20 @@ const goToPreviousPage = () => {
   font-size: 0.95rem;
   max-width: 300px;
   margin: 0 auto;
+}
+
+.loading-spinner {
+  text-align: center;
+  padding: 2rem;
+  color: #4f46e5;
+}
+
+.error-message {
+  text-align: center;
+  padding: 1rem;
+  color: #ef4444;
+  background-color: #fee2e2;
+  border-radius: 0.375rem;
+  margin: 1rem 0;
 }
 </style>
