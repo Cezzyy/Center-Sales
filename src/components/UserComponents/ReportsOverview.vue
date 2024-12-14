@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, defineAsyncComponent } from 'vue'
+import { ref, computed, watch, defineAsyncComponent, onMounted } from 'vue'
 import { useReportsStore } from '@/stores/reportsStore'
 import { useOrderInvoiceStore } from '@/stores/salesStore'
 import { saveAs } from 'file-saver'
@@ -7,6 +7,7 @@ import * as XLSX from 'xlsx'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { library } from '@fortawesome/fontawesome-svg-core'
 import { faChartLine, faPlus, faEdit } from '@fortawesome/free-solid-svg-icons'
+import { storeToRefs } from 'pinia'
 
 library.add(faChartLine, faPlus, faEdit)
 
@@ -19,6 +20,9 @@ const orderStore = useOrderInvoiceStore()
 const activityLog = useActivityLog()
 const { logAction } = activityLog
 const { can } = usePermissions()
+
+// Destructure store state with storeToRefs for reactivity
+const { reports, isLoading, error } = storeToRefs(reportsStore)
 
 const AddReportModal = defineAsyncComponent(() => import('../UserSideModals/AddReportModal.vue'))
 const EditReportModal = defineAsyncComponent(() => import('../UserSideModals/EditReportModal.vue'))
@@ -35,16 +39,82 @@ const showAddReportModal = ref(false)
 const showEditReportModal = ref(false)
 const selectedReport = ref(null)
 
-// Computed Properties
-const reports = computed(() => reportsStore.filteredReports)
-const paginatedReports = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage.value
-  return reports.value.slice(start, start + itemsPerPage.value)
+// Notification state
+const notification = ref({
+  show: false,
+  message: '',
+  type: 'success', // or 'error'
 })
 
-const totalPages = computed(() => Math.ceil(reports.value.length / itemsPerPage.value))
+const showNotification = (message, type = 'success') => {
+  notification.value = {
+    show: true,
+    message,
+    type,
+  }
+  setTimeout(() => {
+    notification.value.show = false
+  }, 3000)
+}
+
+const handleUpdateSuccess = async ({ message, report }) => {
+  try {
+    await reportsStore.updateReport(report.reportId, report)
+    showNotification(message || 'Report updated successfully')
+    await logAction('UPDATE_REPORT', `Updated report ${report.reportId}`)
+    closeEditModal()
+  } catch (error) {
+    handleUpdateError({ message: error.message, error })
+  }
+}
+
+const handleUpdateError = ({ message, error }) => {
+  showNotification(message || 'Error updating report', 'error')
+  console.error('Error updating report:', error)
+}
+
+const editReport = (report) => {
+  selectedReport.value = { ...report }
+  showEditReportModal.value = true
+}
+
+const closeEditModal = () => {
+  showEditReportModal.value = false
+  selectedReport.value = null
+}
+
+// Fetch data on component mount
+onMounted(async () => {
+  try {
+    await reportsStore.fetchReports()
+    await orderStore.fetchOrders() // We might need orders data for the add report modal
+  } catch (error) {
+    console.error('Error fetching initial data:', error)
+  }
+})
+
+// Computed Properties
+const filteredReports = computed(() => reportsStore.filteredReports)
+const paginatedReports = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage.value
+  const end = start + itemsPerPage.value
+  return filteredReports.value.slice(start, end)
+})
+
+const totalPages = computed(() => Math.ceil(filteredReports.value.length / itemsPerPage.value))
 const totalRevenue = computed(() => reportsStore.totalRevenue)
 const averageOrderValue = computed(() => reportsStore.averageOrderValue)
+
+// Format date for display
+const formatDate = (dateString) => {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  })
+}
 
 // Methods
 const handleSort = (column) => {
@@ -55,24 +125,47 @@ const handleSort = (column) => {
     sortDirection.value = 'asc'
   }
   reportsStore.handleSort(column)
-  // logAction({
-  //   action: 'SORT_REPORTS',
-  //   category: 'reports',
-  //   details: `Reports sorted by ${column} in ${sortDirection.value} order`,
-  //   additionalData: { column, direction: sortDirection.value },
-  // })
+  logAction({
+    action: 'SORT_REPORTS',
+    category: 'reports',
+    details: `Reports sorted by ${column} in ${sortDirection.value} order`,
+    additionalData: { column, direction: sortDirection.value },
+  })
 }
 
 const changePage = (page) => {
   if (page >= 1 && page <= totalPages.value) {
     currentPage.value = page
   }
-  // logAction({
-  //   action: 'CHANGE_PAGE',
-  //   category: 'reports',
-  //   details: `Navigated to reports page ${page}`,
-  //   additionalData: { page, totalPages: totalPages.value },
-  // })
+  logAction({
+    action: 'CHANGE_PAGE',
+    category: 'reports',
+    details: `Navigated to reports page ${page}`,
+    additionalData: { page, totalPages: totalPages.value },
+  })
+}
+
+// Watch for filter changes
+watch([startDate, endDate, searchQuery], () => {
+  currentPage.value = 1
+  reportsStore.setDateFilter(startDate.value, endDate.value)
+  reportsStore.setSearchQuery(searchQuery.value)
+})
+
+// Report management methods
+const addReport = async (reportData) => {
+  try {
+    await reportsStore.addReport(reportData)
+    showAddReportModal.value = false
+    logAction({
+      action: 'ADD_REPORT',
+      category: 'reports',
+      details: `Added new report for ${reportData.customerName}`,
+    })
+  } catch (error) {
+    console.error('Error adding report:', error)
+    alert(error.message)
+  }
 }
 
 const exportToExcel = async () => {
@@ -131,82 +224,30 @@ const exportToCSV = async () => {
     console.error('Failed to export to CSV:', error)
   }
 }
-
-const addReport = async (reportData) => {
-  if (!can.write()) {
-    console.error('Permission denied: Cannot create reports')
-    return
-  }
-
-  try {
-    const newReport = await reportsStore.addReport(reportData)
-    showAddReportModal.value = false
-    await logAction({
-      action: 'CREATE_REPORT',
-      category: 'report',
-      details: `Created new report #${reportData.reportId} for order #${reportData.orderId} - Customer: ${reportData.customerName}`,
-      targetId: reportData.reportId,
-    })
-  } catch (error) {
-    console.error('Failed to create report:', error)
-  }
-}
-
-const editReport = (report) => {
-  selectedReport.value = { ...report }
-  showEditReportModal.value = true
-}
-
-const handleUpdateReport = async (updatedReport) => {
-  if (!can.write()) {
-    console.error('Permission denied: Cannot edit reports')
-    return
-  }
-
-  try {
-    await reportsStore.updateReport(updatedReport)
-    showEditReportModal.value = false
-    selectedReport.value = null
-    await logAction({
-      action: 'UPDATE_REPORT',
-      category: 'report',
-      details: `Updated report #${updatedReport.reportId}`,
-      targetId: updatedReport.reportId,
-    })
-  } catch (error) {
-    console.error('Failed to update report:', error)
-  }
-}
-
-// Watch for filter changes to reset pagination
-watch([startDate, endDate, searchQuery], () => {
-  currentPage.value = 1
-  reportsStore.setDateFilter(startDate.value, endDate.value)
-  reportsStore.setSearchQuery(searchQuery.value)
-  // logAction({
-  //   action: 'APPLY_FILTERS',
-  //   category: 'reports',
-  //   details: 'Applied report filters',
-  //   additionalData: {
-  //     dateRange: { start: startDate.value, end: endDate.value },
-  //     searchQuery: searchQuery.value,
-  //   },
-  // })
-})
 </script>
 
 <template>
   <div class="reports-overview">
+    <!-- Loading and Error States -->
+    <div v-if="isLoading" class="loading-state">
+      <span class="loader"></span>
+      Loading reports...
+    </div>
+
+    <div v-if="error" class="error-state">
+      <p class="error-message">{{ error }}</p>
+    </div>
+
     <!-- Filters Section -->
-    <section class="filters-section">
+    <section v-if="!isLoading" class="filters-section">
       <div class="date-filters">
         <div class="filter-group">
-          <label>From:</label>
-          <input type="date" v-model="startDate" />
+          <label for="startDate">From:</label>
+          <input type="date" id="startDate" v-model="startDate" :max="endDate || undefined" />
         </div>
         <div class="filter-group">
-          <label>To:</label>
-          <input type="date" v-model="endDate" />
+          <label for="endDate">To:</label>
+          <input type="date" id="endDate" v-model="endDate" :min="startDate || undefined" />
         </div>
       </div>
 
@@ -230,7 +271,7 @@ watch([startDate, endDate, searchQuery], () => {
     </section>
 
     <!-- Metrics Section -->
-    <section class="metrics-section">
+    <section v-if="!isLoading" class="metrics-section">
       <div class="metric-card">
         <h3>Total Reports</h3>
         <p>{{ reports.length }}</p>
@@ -246,7 +287,7 @@ watch([startDate, endDate, searchQuery], () => {
     </section>
 
     <!-- Table Section -->
-    <section class="table-section">
+    <section v-if="!isLoading && paginatedReports.length > 0" class="table-section">
       <table class="reports-table" v-if="reports.length > 0">
         <thead>
           <tr>
@@ -333,9 +374,14 @@ watch([startDate, endDate, searchQuery], () => {
       v-if="showEditReportModal"
       :isOpen="showEditReportModal"
       :report="selectedReport"
-      @close="showEditReportModal = false"
-      @update="handleUpdateReport"
+      @close="closeEditModal"
+      @update:success="handleUpdateSuccess"
+      @update:error="handleUpdateError"
     />
+    <!-- Snackbar for notifications -->
+    <div v-if="notification.show" :class="['snackbar', notification.type]">
+      {{ notification.message }}
+    </div>
   </div>
 </template>
 
@@ -407,7 +453,7 @@ watch([startDate, endDate, searchQuery], () => {
 }
 
 .btn-export {
-  background: linear-gradient(135deg, #4f46e5, #4338ca);
+  background-color: #3b82f6;
   color: white;
 }
 
@@ -416,7 +462,7 @@ watch([startDate, endDate, searchQuery], () => {
 }
 
 .btn-add {
-  background: linear-gradient(to right, #4f46e5, #4338ca);
+  background-color: #3b82f6;
   color: white;
   padding: 0.75rem 1.5rem;
   border: none;
@@ -430,8 +476,7 @@ watch([startDate, endDate, searchQuery], () => {
 }
 
 .btn-add:hover {
-  background: linear-gradient(to right, #4338ca, #3730a3);
-  transform: translateY(-1px);
+  background-color: #2563eb;
 }
 
 .btn-add:active {
@@ -679,5 +724,25 @@ watch([startDate, endDate, searchQuery], () => {
 
 .edit-icon {
   font-size: 0.875rem;
+}
+
+.snackbar {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 24px;
+  border-radius: 4px;
+  color: white;
+  z-index: 1000;
+  transition: all 0.3s ease;
+}
+
+.snackbar.success {
+  background-color: #4caf50;
+}
+
+.snackbar.error {
+  background-color: #f44336;
 }
 </style>

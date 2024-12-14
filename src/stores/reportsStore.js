@@ -1,9 +1,11 @@
 import { defineStore } from 'pinia'
-import { useStorage } from '@vueuse/core'
+import { ReportService } from '@/services/reportService'
 
 export const useReportsStore = defineStore('reports', {
   state: () => ({
-    reports: useStorage('reports', []),
+    reports: [],
+    isLoading: false,
+    error: null,
     showAddReportModal: false,
     currentPage: 1,
     itemsPerPage: 10,
@@ -25,9 +27,9 @@ export const useReportsStore = defineStore('reports', {
         const query = state.searchQuery.toLowerCase()
         filtered = filtered.filter(
           (report) =>
-            report.reportId.toLowerCase().includes(query) ||
-            report.orderId.toLowerCase().includes(query) ||
-            report.customerName.toLowerCase().includes(query),
+            report.reportId?.toLowerCase().includes(query) ||
+            report.orderId?.toLowerCase().includes(query) ||
+            report.customerName?.toLowerCase().includes(query),
         )
       }
 
@@ -58,47 +60,85 @@ export const useReportsStore = defineStore('reports', {
       return filtered
     },
 
-    paginatedReports: (state) => {
-      const start = (state.currentPage - 1) * state.itemsPerPage
-      return this.filteredReports.slice(start, start + state.itemsPerPage)
-    },
-
-    totalPages: (state) => {
-      return Math.ceil(this.filteredReports.length / state.itemsPerPage)
-    },
-
     totalRevenue: (state) => {
-      return state.reports.reduce((sum, report) => sum + report.amount, 0)
+      return state.reports.reduce((sum, report) => sum + (report.amount || 0), 0)
     },
 
     averageOrderValue: (state) => {
       return state.reports.length
-        ? state.reports.reduce((sum, report) => sum + report.amount, 0) / state.reports.length
+        ? state.reports.reduce((sum, report) => sum + (report.amount || 0), 0) /
+            state.reports.length
         : 0
     },
   },
 
   actions: {
-    addReport(report) {
-      const newReport = {
-        ...report,
-        date: new Date().toISOString().split('T')[0],
-        status: 'Pending',
-        paymentStatus: 'Unpaid',
-      }
-      this.reports.push(newReport)
-      return newReport // Return the created report
-    },
-
-    updateReport(reportId, updates) {
-      const index = this.reports.findIndex((r) => r.reportId === reportId)
-      if (index !== -1) {
-        this.reports[index] = { ...this.reports[index], ...updates }
+    async fetchReports() {
+      try {
+        this.isLoading = true
+        this.error = null
+        const reports = await ReportService.getReports()
+        this.reports = reports
+      } catch (error) {
+        this.error = error.message || 'Failed to fetch reports'
+        throw error
+      } finally {
+        this.isLoading = false
       }
     },
 
-    deleteReport(reportId) {
-      this.reports = this.reports.filter((r) => r.reportId !== reportId)
+    async addReport(reportData) {
+      try {
+        this.isLoading = true
+        this.error = null
+
+        // Check if report already exists in local state
+        const existingReport = this.reports.find((r) => r.orderId === reportData.orderId)
+        if (existingReport) {
+          throw new Error('A report for this order already exists')
+        }
+
+        const newReport = await ReportService.addReport(reportData)
+        this.reports.push(newReport)
+        return newReport
+      } catch (error) {
+        this.error = error.message || 'Failed to add report'
+        throw error
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    async updateReport(reportId, updates) {
+      try {
+        this.isLoading = true
+        this.error = null
+        const updatedReport = await ReportService.updateReport(reportId, updates)
+        const index = this.reports.findIndex((r) => r.reportId === reportId)
+        if (index !== -1) {
+          this.reports[index] = updatedReport
+        }
+        return updatedReport
+      } catch (error) {
+        this.error = error.message || 'Failed to update report'
+        throw error
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    async deleteReport(reportId) {
+      try {
+        this.isLoading = true
+        this.error = null
+        await ReportService.deleteReport(reportId)
+        this.reports = this.reports.filter((r) => r.reportId !== reportId)
+      } catch (error) {
+        this.error = error.message || 'Failed to delete report'
+        throw error
+      } finally {
+        this.isLoading = false
+      }
     },
 
     handleSort(column) {
@@ -111,7 +151,7 @@ export const useReportsStore = defineStore('reports', {
     },
 
     handlePageChange(page) {
-      if (page >= 1 && page <= this.totalPages) {
+      if (page >= 1 && page <= Math.ceil(this.filteredReports.length / this.itemsPerPage)) {
         this.currentPage = page
       }
     },

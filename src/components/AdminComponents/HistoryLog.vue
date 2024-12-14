@@ -34,7 +34,7 @@ const formatTimestamp = (timestamp) => {
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
-      second: '2-digit'
+      second: '2-digit',
     })
   } catch (error) {
     console.error('Error formatting timestamp:', error)
@@ -47,13 +47,13 @@ const fetchLogs = async () => {
   try {
     isLoading.value = true
     error.value = null
-    
+
     // Only apply date filters here, other filters are handled by computed properties
     const filters = {
       startDate: startDate.value,
-      endDate: endDate.value
+      endDate: endDate.value,
     }
-    
+
     const logs = await LogService.getLogs(filters)
     console.log('Fetched logs:', logs)
     historyLogs.value = logs
@@ -93,7 +93,7 @@ const filteredLogs = computed(() => {
     const now = new Date()
     filtered = filtered.filter((log) => {
       const logDate = new Date(log.timestamp)
-      
+
       switch (selectedDateRange.value) {
         case 'today':
           return isSameDay(logDate, now)
@@ -285,7 +285,7 @@ onMounted(() => {
                 class="history-log__action-badge"
                 :class="'history-log__action-badge--' + getActionColor(log.action)"
               >
-                {{ log.action.replace('_', ' ') }}
+                {{ log.action ? log.action.replace('_', ' ') : 'Unknown Action' }}
               </span>
             </td>
             <td class="history-log__details">{{ log.details }}</td>
@@ -295,9 +295,7 @@ onMounted(() => {
     </div>
 
     <!-- Loading State -->
-    <div v-if="isLoading" class="history-log__loading">
-      Loading activity logs...
-    </div>
+    <div v-if="isLoading" class="history-log__loading">Loading activity logs...</div>
 
     <!-- Empty State -->
     <div v-if="!isLoading && filteredLogs.length === 0" class="history-log__empty">
