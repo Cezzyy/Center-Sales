@@ -199,9 +199,11 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
 import { usePermissionsStore } from '../../stores/permissionsStore'
+import { useReportsStore } from '../../stores/reportsStore'
 import { useActivityLog } from '@/composables/useActivityLog'
 
 const { logAction } = useActivityLog()
+const reportsStore = useReportsStore()
 const props = defineProps({
   isOpen: {
     type: Boolean,
@@ -213,7 +215,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['close', 'update'])
+const emit = defineEmits(['close', 'update:success', 'update:error'])
 
 const permissionsStore = usePermissionsStore()
 const canEdit = computed(() => permissionsStore.hasPermission('write'))
@@ -245,9 +247,16 @@ const formData = ref({
   salesRep: '',
   orderDate: '',
   dueDate: '',
-  status: 'pending', // Default value
-  paymentStatus: 'pending', // Default value
+  date: '',
+  status: 'pending',
+  paymentStatus: 'pending',
 })
+
+const formatDateForInput = (dateString) => {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  return date.toISOString().split('T')[0]
+}
 
 const errors = ref({})
 const hasErrors = computed(() => Object.values(errors.value).some((error) => error))
@@ -343,13 +352,12 @@ const validateForm = () => {
   return isValid
 }
 
-const validateAndSubmit = () => {
+const validateAndSubmit = async () => {
   const isValid = validateForm()
   if (!isValid) {
     return
   }
 
-  // Additional check for dropdowns
   if (!formData.value.status || !formData.value.paymentStatus) {
     if (!formData.value.status) {
       errors.value.status = 'Status is required'
@@ -360,52 +368,69 @@ const validateAndSubmit = () => {
     return
   }
 
-  // Check if any changes were made
-  const changedFields = Object.keys(formData.value).filter(
-    (key) => formData.value[key] !== props.report[key]
-  )
+  try {
+    // Ensure we have a reportId
+    if (!formData.value.reportId) {
+      throw new Error('Report ID is missing')
+    }
 
-  if (changedFields.length > 0) {
-    // Only log if changes were made
-    logAction({
-      action: 'UPDATE_REPORT',
-      category: 'reports',
-      details: `Updated report #${formData.value.reportId} - Changed fields: ${changedFields.join(', ')}`,
-      targetId: formData.value.reportId,
-      additionalData: {
-        changedFields,
-        oldValues: changedFields.reduce((acc, field) => {
-          acc[field] = props.report[field]
-          return acc
-        }, {}),
-        newValues: changedFields.reduce((acc, field) => {
-          acc[field] = formData.value[field]
-          return acc
-        }, {})
-      },
+    // Format the form data
+    const formattedData = {
+      ...formData.value,
+      quantity: parseInt(formData.value.quantity),
+      amount: parseFloat(formData.value.amount),
+      date: formData.value.date,
+      orderDate: formData.value.orderDate,
+      dueDate: formData.value.dueDate,
+      updatedBy: 'System',
+    }
+
+    // Update the report
+    await reportsStore.updateReport(formData.value.reportId, formattedData)
+
+    // Log the action
+    await logAction('UPDATE_REPORT', `Updated report #${formData.value.reportId}`)
+
+    // Emit success event
+    emit('update:success', {
+      message: 'Report updated successfully',
+      report: formattedData,
+    })
+
+    // Close the modal
+    handleClose()
+  } catch (error) {
+    console.error('Error updating report:', error)
+    emit('update:error', {
+      message: error.message || 'Failed to update report',
+      error,
     })
   }
-
-  emit('update', { ...formData.value })
-  handleClose()
 }
 
 onMounted(() => {
   if (props.report) {
+    // Create a copy of the report and ensure reportId is included
     const report = { ...props.report }
-    // Format dates for input type="date"
-    if (report.orderDate) {
-      report.orderDate = new Date(report.orderDate).toISOString().split('T')[0]
-    }
-    if (report.dueDate) {
-      report.dueDate = new Date(report.dueDate).toISOString().split('T')[0]
+
+    // Format dates for input
+    formData.value = {
+      reportId: report.reportId, // Ensure reportId is set
+      orderId: report.orderId || '',
+      customerName: report.customerName || '',
+      productName: report.productName || '',
+      quantity: parseInt(report.quantity) || 0,
+      amount: parseFloat(report.amount) || 0,
+      salesRep: report.salesRep || '',
+      date: formatDateForInput(report.date),
+      orderDate: formatDateForInput(report.orderDate),
+      dueDate: formatDateForInput(report.dueDate),
+      status: report.status || 'pending',
+      paymentStatus: report.paymentStatus || 'pending',
     }
 
-    // Ensure status and paymentStatus have valid values
-    report.status = report.status || 'pending'
-    report.paymentStatus = report.paymentStatus || 'pending'
-
-    formData.value = report
+    // Log the form data for debugging
+    console.log('Initialized form data:', formData.value)
   }
 })
 

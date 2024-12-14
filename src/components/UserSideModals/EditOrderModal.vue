@@ -136,22 +136,31 @@ import { useOrderInvoiceStore } from '@/stores/salesStore'
 
 const store = useOrderInvoiceStore()
 const props = defineProps({
-  modelValue: Boolean
+  modelValue: {
+    type: Boolean,
+    required: true,
+  },
+  order: {
+    type: Object,
+    required: true,
+  },
 })
+
 const emit = defineEmits(['update:modelValue', 'submit'])
 
+// Initialize form data with order props
 const formData = ref({
-  orderId: '',
-  customerName: '',
-  salesRepresentative: '',
-  productName: '',
-  quantity: 0,
-  amount: 0,
-  status: 'pending'
+  orderId: props.order?.orderId || '',
+  customerName: props.order?.customerName || '',
+  salesRepresentative: props.order?.salesRepresentative || '',
+  productName: props.order?.productName || '',
+  quantity: props.order?.quantity || 0,
+  amount: props.order?.amount || 0,
+  status: props.order?.status || 'pending'
 })
 
-// Watch for changes in the store's editOrder
-watch(() => store.editOrder, (newOrder) => {
+// Watch for changes in order prop
+watch(() => props.order, (newOrder) => {
   if (newOrder) {
     formData.value = {
       orderId: newOrder.orderId || '',
@@ -163,7 +172,7 @@ watch(() => store.editOrder, (newOrder) => {
       status: newOrder.status || 'pending'
     }
   }
-}, { immediate: true })
+}, { deep: true })
 
 const errors = ref({
   customerName: '',
@@ -222,10 +231,14 @@ const closeModal = () => {
   }
 }
 
-const handleSubmit = () => {
+const handleSubmit = async () => {
   if (validateForm()) {
-    emit('submit', formData.value);
-    closeModal();
+    try {
+      await emit('submit', { ...formData.value, id: props.order.id })
+      closeModal()
+    } catch (error) {
+      console.error('Error submitting form:', error)
+    }
   }
 }
 </script>

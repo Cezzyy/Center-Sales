@@ -4,6 +4,7 @@ import { useOrderInvoiceStore } from '@/stores/salesStore'
 import { storeToRefs } from 'pinia'
 import { useActivityLog } from '@/composables/useActivityLog'
 import { usePermissions } from '@/composables/usePermissions'
+import { onMounted } from 'vue'
 
 const AddSalesModal = defineAsyncComponent(() => import('../UserSideModals/AddSalesModal.vue'))
 const AddInvoiceModal = defineAsyncComponent(() => import('../UserSideModals/AddInvoiceModal.vue'))
@@ -17,8 +18,14 @@ const EditInvoiceModal = defineAsyncComponent(
 const { logAction, logInvoiceAction } = useActivityLog()
 const { can } = usePermissions()
 
-// Initialize store
+// Initialize store and fetch data
 const store = useOrderInvoiceStore()
+
+// Fetch orders and invoices on component mount
+onMounted(async () => {
+  await store.fetchOrders()
+  await store.fetchInvoices()
+})
 
 // Destructure state and getters with storeToRefs for reactivity
 const {
@@ -88,84 +95,123 @@ const openEditInvoiceModal = (invoice) => {
 }
 const closeEditInvoiceModal = () => store.closeModal('EditInvoice')
 
+// Delete handlers
+const handleDeleteOrder = async (orderId, orderData) => {
+  try {
+    if (!confirm('Are you sure you want to delete this order? This action cannot be undone.')) {
+      return
+    }
+
+    // Ensure we have the latest data
+    await store.fetchOrders()
+    await store.deleteOrder(orderId, orderData)
+    logAction('DELETE_ORDER', `Successfully deleted order ${orderId}`)
+  } catch (error) {
+    const errorMessage = error.message || 'Failed to delete order'
+    console.error('Delete order error:', error)
+    alert(errorMessage)
+  }
+}
+
+const handleDeleteInvoice = async (invoiceId, invoiceData) => {
+  try {
+    if (!confirm('Are you sure you want to delete this invoice? This action cannot be undone.')) {
+      return
+    }
+
+    // Ensure we have the latest data
+    await store.fetchInvoices()
+    await store.deleteInvoice(invoiceId, invoiceData)
+    logInvoiceAction('DELETE_INVOICE', `Successfully deleted invoice ${invoiceId}`)
+  } catch (error) {
+    const errorMessage = error.message || 'Failed to delete invoice'
+    console.error('Delete invoice error:', error)
+    alert(errorMessage)
+  }
+}
+
+const markAsPaid = async (invoiceId) => {
+  try {
+    if (
+      !confirm('Are you sure you want to mark this invoice as paid? This action cannot be undone.')
+    ) {
+      return
+    }
+
+    // Ensure we have the latest data
+    await store.fetchInvoices()
+    await store.markInvoiceAsPaid(invoiceId)
+    logInvoiceAction('MARK_PAID', `Successfully marked invoice ${invoiceId} as paid`)
+  } catch (error) {
+    const errorMessage = error.message || 'Failed to mark invoice as paid'
+    console.error('Mark as paid error:', error)
+    alert(errorMessage)
+  }
+}
+
 // Form submission handlers
 const handleEditOrderSubmit = async (updatedOrder) => {
   if (!can.write()) {
-    console.error('Permission denied: Cannot edit orders')
     return
   }
 
   try {
     await store.handleEditOrderSubmit(updatedOrder)
-    await logAction({
-      action: 'EDIT_ORDER',
-      category: 'order',
-      details: `Edited order #${updatedOrder.orderId} - Customer: ${updatedOrder.customerName}`,
-      targetId: updatedOrder.orderId,
-    })
+    await logAction('UPDATE_ORDER', `Updated order ${updatedOrder.orderId}`)
     closeEditOrderModal()
   } catch (error) {
-    console.error('Failed to update order:', error)
+    console.error('Error updating order:', error)
   }
 }
 
 const handleEditInvoiceSubmit = async (updatedInvoice) => {
   if (!can.write()) {
-    console.error('Permission denied: Cannot edit invoices')
     return
   }
 
   try {
     await store.handleEditInvoiceSubmit(updatedInvoice)
-    await logAction({
-      action: 'EDIT_INVOICE',
-      category: 'invoice',
-      details: `Edited invoice #${updatedInvoice.invoiceId} for order #${updatedInvoice.orderId}`,
-      targetId: updatedInvoice.invoiceId,
-    })
+    await logInvoiceAction('UPDATE_INVOICE', `Updated invoice ${updatedInvoice.invoiceId}`)
     closeEditInvoiceModal()
   } catch (error) {
-    console.error('Failed to update invoice:', error)
+    console.error('Error updating invoice:', error)
   }
 }
 
 const handleAddInvoiceSubmit = async (newInvoice) => {
   if (!can.write()) {
-    console.error('Permission denied: Cannot create invoices')
     return
   }
 
   try {
-    await store.handleAddInvoiceSubmit(newInvoice)
-    await logAction({
-      action: 'CREATE_INVOICE',
-      category: 'invoice',
-      details: `Created new invoice for order #${newInvoice.orderId} - Amount: ${newInvoice.amount}, Due: ${formatDate(newInvoice.dueDate)}`,
-      targetId: newInvoice.id,
+    await store.handleAddInvoiceSubmit({
+      ...newInvoice,
+      referenceNumber: newInvoice.invoiceId, // Store the generated ID as reference
+      isPaid: false, // Initialize isPaid status
+      status: 'pending',
     })
+    await logInvoiceAction(
+      'CREATE_INVOICE',
+      `Created new invoice ${newInvoice.invoiceId} for ${newInvoice.customerName}`,
+    )
     closeAddInvoiceModal()
   } catch (error) {
-    console.error('Failed to create invoice:', error)
+    console.error('Error adding invoice:', error)
+    alert(error.message || 'Failed to add invoice')
   }
 }
 
 const handleAddSalesSubmit = async (salesData) => {
   if (!can.write()) {
-    console.error('Permission denied: Cannot create sales')
     return
   }
 
   try {
     await store.handleAddSalesSubmit(salesData)
-    await logAction({
-      action: 'CREATE_ORDER',
-      category: 'order',
-      details: `Created new order - Customer: ${salesData.customerName}, Product: ${salesData.productName}, Amount: ${salesData.amount}`,
-      targetId: salesData.id,
-    })
+    await logAction('CREATE_ORDER', `Created new order for ${salesData.customerName}`)
     closeAddSalesModal()
   } catch (error) {
-    console.error('Failed to create sale:', error)
+    console.error('Error adding sales order:', error)
   }
 }
 
@@ -180,33 +226,6 @@ const goToNextPageInvoices = () => store.goToNextPage('invoices')
 // Filter reset handlers
 const resetOrderFilters = () => store.resetFilters('orders')
 const resetInvoiceFilters = () => store.resetFilters('invoices')
-
-// Mark invoice as paid
-const markAsPaid = async (invoiceId) => {
-  if (!can.write()) {
-    console.error('Permission denied: Cannot update invoice status')
-    return
-  }
-
-  try {
-    const invoice = store.getInvoiceById(invoiceId)
-    if (!invoice) {
-      console.error('Invoice not found:', invoiceId)
-      return
-    }
-
-    await store.markInvoiceAsPaid(invoiceId)
-
-    await logInvoiceAction(
-      'UPDATE_INVOICE_STATUS',
-      `Marked invoice #${invoiceId} as paid`,
-      invoiceId,
-      { status: 'paid' },
-    )
-  } catch (error) {
-    console.error('Error marking invoice as paid:', error)
-  }
-}
 </script>
 
 <template>
@@ -307,6 +326,13 @@ const markAsPaid = async (invoiceId) => {
                       @click="openEditOrderModal(order)"
                     >
                       Edit
+                    </button>
+                    <button
+                      v-if="can.write()"
+                      class="btn-action btn-delete"
+                      @click="handleDeleteOrder(order.orderId, order)"
+                    >
+                      Delete
                     </button>
                   </div>
                 </td>
@@ -432,7 +458,7 @@ const markAsPaid = async (invoiceId) => {
                     <button
                       v-if="can.write() && !invoice.isPaid"
                       class="btn-action btn-mark-paid"
-                      @click="markAsPaid(invoice.invoiceId)"
+                      @click="markAsPaid(invoice.id)"
                     >
                       Mark as Paid
                     </button>
@@ -442,6 +468,13 @@ const markAsPaid = async (invoiceId) => {
                       @click="openEditInvoiceModal(invoice)"
                     >
                       Edit
+                    </button>
+                    <button
+                      v-if="can.write()"
+                      class="btn-action btn-delete"
+                      @click="handleDeleteInvoice(invoice.id, invoice)"
+                    >
+                      Delete
                     </button>
                   </div>
                 </td>

@@ -17,15 +17,24 @@ try {
 }
 
 export class LogService {
+  static validateLogEntry(log) {
+    return {
+      id: log.id || crypto.randomUUID(),
+      timestamp: log.timestamp || new Date().toISOString(),
+      action: log.action || 'UNKNOWN',
+      username: log.username || 'System',
+      details: log.details || 'No details provided',
+    }
+  }
+
   static async addLog(logData) {
     try {
       console.log('Adding log:', logData)
 
-      const log = {
-        id: crypto.randomUUID(),
+      const log = LogService.validateLogEntry({
         timestamp: new Date().toISOString(),
         ...logData,
-      }
+      })
 
       // Add to beginning of array
       logs.unshift(log)
@@ -57,6 +66,10 @@ export class LogService {
       // Get fresh logs from localStorage
       const storedLogs = localStorage.getItem(LOGS_STORAGE_KEY)
       logs = storedLogs ? JSON.parse(storedLogs) : []
+
+      // Validate all logs
+      logs = logs.map((log) => LogService.validateLogEntry(log))
+
       console.log('Retrieved logs:', logs)
 
       let filteredLogs = [...logs]
